@@ -49,7 +49,7 @@ adminRouter.get('/reports', async (req, res, next) => {
       const u = users.get(id);
       if (await findActiveBan({ publicId: id, ip: u?.lastIp ?? undefined })) banned.add(id);
     }
-    const unknown = (publicId: string) => ({ publicId, displayName: '(deleted user)', lookingFor: [] });
+    const unknown = (publicId: string) => ({ publicId, displayName: '(deleted user)', majors: [], lookingFor: [] });
     const result: ReportView[] = reports.map((r) => {
       const target = users.get(r.targetId);
       return {

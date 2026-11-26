@@ -60,7 +60,8 @@ tutoringRouter.get('/', async (_req, res, next) => {
         sameProfessor: fit.sameProfessor,
         overlaps: scheduleOverlaps(mySchedule, (u.schedule ?? []) as ScheduleBlock[]),
       };
-      results[fit.kind].push(match);
+      const bucket = { trade: 'trades', canHelpYou: 'canHelpYou', youCanHelp: 'youCanHelp' } as const;
+      results[bucket[fit.kind]].push(match);
     }
 
     const score = (m: TutoringMatch) => m.sameProfessor.length * 100 + m.overlaps.length * 10 + m.theyCanTeach.length + m.youCanTeach.length;
