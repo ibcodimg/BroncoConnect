@@ -13,6 +13,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const BASE = 'https://catalog.cpp.edu';
+// 2026–27 catalog "Course Descriptions" page. Used when the link can't be found on the home page.
+const DEFAULT_LISTING = 'https://catalog.cpp.edu/content.php?catoid=78&navoid=7093';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const outFile = path.resolve(here, '../client/public/cpp-courses.json');
 
@@ -49,9 +51,8 @@ async function findListingUrl() {
   }));
   const hit = links.find((l) => /course descriptions/i.test(l.text)) ?? links.find((l) => /^courses?$/i.test(l.text));
   if (!hit) {
-    console.error('Could not find the "Course Descriptions" link. Open catalog.cpp.edu, copy that page’s URL, and run:');
-    console.error('  npm run fetch:courses -- --url "<that url>"');
-    process.exit(1);
+    console.log('Could not find the "Course Descriptions" link on the catalog home page; using the 2026–27 default.');
+    return DEFAULT_LISTING;
   }
   return new URL(hit.href, BASE).toString();
 }
@@ -80,6 +81,7 @@ async function main() {
 
   if (courses.size < 50) {
     console.error(`Only found ${courses.size} courses; the catalog layout may have changed. Nothing written.`);
+    console.error('Tip: on Windows, put the URL in quotes — an unquoted & cuts it off.');
     process.exit(1);
   }
 
