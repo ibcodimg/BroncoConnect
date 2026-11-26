@@ -65,6 +65,8 @@ const NUMBERED: [string, string][] = [
   ['72', 'Centerpointe Dining Commons'],
   ['73', 'Sicomoro Residence Hall'],
   ['74', 'Secoya Residence Hall'],
+  ['76', 'Kellogg West Education/Dining'],
+  ['77', 'Kellogg West Main Lodge'],
   ['78', 'Kellogg West Addition'],
   ['79', 'Collins College of Hospitality Management'],
   ['89', 'Interim Design Center'],
@@ -73,9 +75,9 @@ const NUMBERED: [string, string][] = [
   ['95', 'Cultural Centers'],
   ['97', 'Campus Center'],
   ['98', 'Classroom/Laboratory/Administration (CLA)'],
+  ['98P', 'CLA Paseo'],
   ['99', 'Storage'],
   ['100', 'Storage'],
-  ['109', 'Police and Parking Services'],
   ['111', 'Manor House'],
   ['114', 'Building 114'],
   ['116', 'Child Care Center'],
@@ -87,6 +89,7 @@ const NUMBERED: [string, string][] = [
   ['141', 'Building 141'],
   ['158', 'Orientation Services'],
   ['162', 'College of Business Administration'],
+  ['163', 'College of Business Administration'],
   ['191', 'Building 191'],
   ['193', 'Chilled Water Central Plant'],
   ['209', 'John T. Lyle Center for Regenerative Studies'],
@@ -110,6 +113,7 @@ const PLACES: [string, string][] = [
   ['its', 'Information and Technology Services'],
   ['fruit-and-crops-unit', 'Fruit and Crops Unit'],
   ['rose-float-lab', 'Rose Float Lab'],
+  ['cpp-enterprises', 'Cal Poly Pomona Enterprises'],
 ];
 
 /** Building-specific extras. Math & Statistics live in the College of Science (Building 8). */
