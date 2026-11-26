@@ -148,7 +148,8 @@ export default function Desk({ windows, storageKey, defaults, toolbar }: Props) 
     });
   };
 
-  const narrow = width > 0 && width < NARROW;
+  // Stack on narrow screens, and on short ones (a phone turned sideways), where dragging windows is impractical.
+  const narrow = width > 0 && (width < NARROW || window.innerHeight < 560);
   const visible = windows.filter((w) => !layout?.[w.id]?.hidden);
   const height = layout && !narrow ? Math.max(500, ...visible.map((w) => (layout[w.id] ? layout[w.id].y + layout[w.id].h : 0))) + 16 : undefined;
 

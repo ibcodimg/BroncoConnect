@@ -33,6 +33,14 @@ export default function CampusMap({ buildings, selectedId, onSelect }: Props) {
   const [missing, setMissing] = useState(false);
   const [fixes, setFixes] = useState<MapFixes>({ links: {}, outlines: [] });
   const [map, setMap] = useState<LeafletMap | null>(null);
+
+  // Re-measure when the map's box changes size (phone rotation, layout changes) so tiles fill it.
+  useEffect(() => {
+    if (!map) return;
+    const ro = new ResizeObserver(() => map.invalidateSize());
+    ro.observe(map.getContainer());
+    return () => ro.disconnect();
+  }, [map]);
   const [, setTick] = useState(0); // re-render on pan/zoom so cards follow their building
   const [linking, setLinking] = useState<Feature | null>(null); // admin: outline being linked
   const [drawing, setDrawing] = useState<{ roomId: string; points: L.LatLng[] } | null>(null); // admin: tracing

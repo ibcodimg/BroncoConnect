@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { BoardClipboardProvider } from './components/BoardClipboard';
 import HeaderActions from './components/HeaderActions';
 import ProfileNudge from './components/ProfileNudge';
@@ -19,6 +19,10 @@ import TutoringPage from './pages/TutoringPage';
 function Header() {
   const { me, unreadDms, setUnreadDms } = useSession();
   const myId = me?.publicId;
+  const { pathname } = useLocation();
+  // Small screens: the nav lives behind a ☰ button. Close it whenever the page changes.
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => setMenuOpen(false), [pathname]);
 
   // Initial unread count; live updates come over the socket.
   useEffect(() => {
@@ -30,10 +34,15 @@ function Header() {
   }, [myId, setUnreadDms]);
 
   return (
-    <header className="app-header">
+    <header className={`app-header ${menuOpen ? 'menu-open' : ''}`}>
       <NavLink to="/" className="brand">
         🐴 BroncoConnect
       </NavLink>
+      <button className="menu-toggle" onClick={() => setMenuOpen((v) => !v)} aria-expanded={menuOpen} aria-label="Menu">
+        {menuOpen ? '✕' : '☰'}
+        {!menuOpen && unreadDms > 0 && <span className="badge">{unreadDms}</span>}
+      </button>
+      <div className="header-menu">
       <nav>
         <NavLink to="/" end>
           Campus
@@ -49,6 +58,7 @@ function Header() {
         {me?.isAdmin && <NavLink to="/admin">Admin</NavLink>}
       </nav>
       <HeaderActions />
+      </div>
     </header>
   );
 }

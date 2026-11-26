@@ -38,7 +38,7 @@ export default function MessagesPage() {
   }, [loadConversations]);
 
   return (
-    <div className="messages-page">
+    <div className={`messages-page ${publicId ? 'has-thread' : ''}`}>
       <aside className="conversations">
         <h2>Messages</h2>
         {conversations.length === 0 && <p className="hint">No conversations yet. Click someone's name and choose Message.</p>}
@@ -116,6 +116,9 @@ function Thread({ otherId, onSent }: { otherId: string; onSent: () => void }) {
   return (
     <section className="thread">
       <header>
+        <Link to="/messages" className="back-link" aria-label="Back to conversations">
+          ←
+        </Link>
         {other ? <UserName publicId={other.publicId} name={other.displayName} /> : <span>…</span>}
         {other?.online && <span className="online-dot" title="Online" />}
       </header>

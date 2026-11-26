@@ -408,3 +408,74 @@ input, select { font: inherit; padding: 0.35rem 0.5rem; border: 1px solid var(--
 .versions small { color: var(--muted); }
 .versions p { margin: 0; color: #555; }
 .report-context .earlier-versions { color: var(--muted); font-size: 0.85em; }
+
+/* ---- Phones & small screens ---- */
+/* The app fills exactly the visible screen (dvh follows the mobile URL bar and rotation); only the page below the header scrolls. */
+html, body, #root { height: 100%; }
+#root { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+.app-header { flex: none; position: relative; z-index: 1200; }
+.app-main { flex: 1; min-height: 0; height: auto; }
+.header-menu { display: flex; align-items: center; }
+.menu-toggle { display: none; }
+.back-link { display: none; }
+.presence-measure { width: 0; overflow: hidden; } /* invisible measuring copy must not widen the page */
+img, canvas, svg { max-width: 100%; }
+
+@media (max-width: 1150px) {
+  .app-header { flex-wrap: nowrap; padding: 0.5rem 0.75rem; }
+  .menu-toggle {
+    display: inline-flex; align-items: center; gap: 0.35rem; margin-left: auto;
+    background: transparent; color: white; border: 1px solid #ffffff66; font-size: 1.25rem; line-height: 1; padding: 0.35rem 0.6rem;
+  }
+  .header-menu {
+    display: none; position: absolute; top: 100%; left: 0; right: 0; max-height: calc(100dvh - 52px); overflow: auto;
+    flex-direction: column; align-items: stretch; gap: 0.5rem; padding: 0.5rem 0.75rem 0.9rem;
+    background: var(--green); box-shadow: 0 10px 24px #0004;
+  }
+  .app-header.menu-open .header-menu { display: flex; }
+  .app-header nav { flex-direction: column; align-items: stretch; }
+  .app-header nav a, .app-header nav a.active { margin: 0; padding: 0.7rem 0.4rem; border-bottom: 1px solid #ffffff22; font-size: 1.05rem; }
+  .app-header nav a.active { color: var(--gold); }
+  .recent-rooms { margin: 0; }
+  .recent-toggle { width: 100%; text-align: left; padding: 0.7rem 0.4rem; border: none; border-bottom: 1px solid #ffffff22; border-radius: 0; font-size: 1.05rem; }
+  .recent-menu { position: static; min-width: 0; margin: 0.3rem 0; box-shadow: none; }
+  .header-actions { margin: 0.3rem 0 0; flex-wrap: wrap; }
+  .header-actions button { font-size: 1rem; padding: 0.45rem 0.8rem; }
+}
+
+@media (max-width: 800px) {
+  /* iOS zooms in on any text field under 16px and never zooms back out. */
+  input, select, textarea { font-size: 16px; }
+  .page { padding: 1rem 0.75rem; }
+  .room-page { padding: 0.75rem; }
+  .room-header h1 { font-size: 1.5rem; }
+
+  .campus-page { grid-template-rows: minmax(240px, 55%) 1fr; }
+  .map-card { width: min(280px, calc(100vw - 24px)); }
+  .map-legend { bottom: 0.5rem; left: 0.5rem; padding: 0.35rem 0.5rem; }
+
+  /* Messages: show the list OR the open conversation, with a back arrow. */
+  .messages-page { grid-template-columns: 1fr; grid-template-rows: 100%; }
+  .messages-page.has-thread .conversations { display: none; }
+  .messages-page:not(.has-thread) > :not(.conversations) { display: none; }
+  .back-link { display: inline-block; font-size: 1.3rem; text-decoration: none; margin-right: 0.6rem; }
+  .thread header { display: flex; align-items: center; }
+  .thread .messages li { max-width: 85%; }
+
+  .desk.narrow .win-title { touch-action: auto; }
+  .desk.narrow .win .chat { height: 55vh; height: 55dvh; }
+  .users-table { display: block; overflow-x: auto; }
+  .professor-row { flex-wrap: wrap; }
+  .professor-row input { width: 100% !important; }
+  .tag-box input { min-width: 120px; }
+}
+
+/* Phone sideways: short screen, so give the map more of it and keep the list beside it. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .campus-page { grid-template-columns: 240px 1fr; grid-template-rows: none; }
+  .campus-page .map-area { order: 0; }
+  .desk.narrow .win .chat { height: 80dvh; }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .app-header nav { display: grid; grid-template-columns: 1fr 1fr; column-gap: 1rem; }
+}
