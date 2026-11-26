@@ -8,6 +8,10 @@ import GraphingCalculator from './GraphingCalculator';
  *   2. attach it to a building in shared/buildings.ts (FEATURES)
  *   3. register its component here
  */
+export const FEATURE_LABELS: Record<BuildingFeature, string> = {
+  'graphing-calculator': '📈 Graphing calculator',
+};
+
 export const FEATURE_COMPONENTS: Record<BuildingFeature, ComponentType> = {
   'graphing-calculator': GraphingCalculator,
 };

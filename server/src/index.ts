@@ -12,6 +12,7 @@ import { adminRouter } from './routes/admin';
 import { buildingsRouter } from './routes/buildings';
 import { dmsRouter } from './routes/dms';
 import { friendsRouter } from './routes/friends';
+import { mapLinksRouter } from './routes/mapLinks';
 import { peopleRouter } from './routes/people';
 import { reportsRouter } from './routes/reports';
 import { usersRouter } from './routes/users';
@@ -31,6 +32,7 @@ app.use('/api/friends', friendsRouter);
 app.use('/api/dms', dmsRouter);
 app.use('/api/reports', reportsRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/map-links', mapLinksRouter);
 
 // In production, serve the built client from the same server.
 const here = path.dirname(fileURLToPath(import.meta.url));

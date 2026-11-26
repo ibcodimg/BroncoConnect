@@ -16,6 +16,8 @@ CS 4800 project by Bill Ma. The original pitch is in [`docs/CS4800_Project_Idea_
 | ✅ | **Unerasable ink** on collaborative boards: only the author (or an admin) can erase it. Everyone else can only hide it by muting the author. |
 | ✅ | **People**: click any username for a card with Add friend, Message, Report, and four mute options (drawings or messages, in this building or everywhere). Search people by username. |
 | ✅ | **Direct messages** with live delivery and unread counts. |
+| ✅ | **Room windows**: drag the chat, boards, and tools by their title bars, resize them from the corner, and stack them like desktop windows. Layout is saved per browser. |
+| ✅ | **Live map colors**: buildings get darker green as more people are there (online in the chatroom plus on campus by schedule). |
 | ✅ | **Admin**: review reports with the reported person's recent messages, look up users, and ban by user or IP for 1 hour to 30 days or permanently. |
 | ✅ scaffolded | **Building-specific tools**: a graphing calculator in Building 8 (College of Science, home of Math & Stats). |
 | ✅ scaffolded | **Anonymous, optional profile**: display name, major, commuter or resident, what you're looking for, and your weekly schedule. No account; the site remembers you through a random id in your browser. |
@@ -87,6 +89,8 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the data model, API, and 
 1. Set `ADMIN_TOKEN` to a long random string in `server/.env`, and in Render's environment settings for production.
 2. Open `/admin` in your browser and enter the token once. That browser's identity becomes an admin from then on.
 3. An **Admin** tab appears. From it you can review reports, ban people (user or IP, timed or permanent), and lift bans. Admins can also erase anyone's ink, including unerasable ink.
+
+**Fixing the map:** buildings are matched to chatrooms automatically, using OpenStreetMap data. As an admin, you can click any gray (unmatched) outline and choose its chatroom. Click a matched building and use "Change which outline this is" if the match is wrong. Links are saved in the database for everyone.
 
 User bans follow the browser identity, so clearing site data gets around them. IP bans are stronger, but they block everyone on that network, and campus Wi-Fi can put many students behind one IP. Admins and IPs that admins use can't be banned, so you can't lock yourself out.
 

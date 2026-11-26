@@ -223,3 +223,72 @@ input, select { font: inherit; padding: 0.35rem 0.5rem; border: 1px solid var(--
   .app-header { flex-wrap: wrap; }
   .app-header nav a { margin-left: 0.6rem; }
 }
+
+/* ---- Room: header, presence bar, window desk ---- */
+.room-header { display: block; margin-bottom: 0.5rem; }
+.room-header h1 { margin-bottom: 0.3rem; }
+.presence-bar { position: relative; display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
+.presence-toggle {
+  flex: none; font-weight: 600; border-radius: 999px; background: #e8f3ec; border-color: #b9dcc4; color: var(--green);
+}
+.presence-toggle:hover { background: #d7ecdd; }
+.presence-row { position: relative; flex: 1; min-width: 0; display: flex; gap: 6px; align-items: center; flex-wrap: nowrap; }
+.chip { flex: none; white-space: nowrap; border: 1px solid var(--line); background: white; border-radius: 999px; padding: 0.15rem 0.6rem; font-size: 0.9rem; }
+.chip.me { border-color: #b9dcc4; background: #f1f8f3; }
+.chip.more { color: var(--green); font-weight: 600; }
+.presence-row .presence-list { top: 2rem; right: auto; left: 0; max-height: 50vh; overflow: auto; }
+.presence-measure { position: absolute; visibility: hidden; pointer-events: none; display: flex; gap: 6px; white-space: nowrap; left: 0; top: 0; }
+
+.desk-toolbar { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; margin-bottom: 0.5rem; }
+.desk { position: relative; }
+.win {
+  position: absolute; display: flex; flex-direction: column; background: white;
+  border: 1px solid #cfd8d2; border-radius: var(--radius); box-shadow: 0 4px 18px #0002; overflow: hidden;
+}
+.win-title {
+  flex: none; display: flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.5rem 0.35rem 0.7rem;
+  background: var(--green); color: white; cursor: grab; user-select: none; touch-action: none; font-weight: 600;
+}
+.win-title:active { cursor: grabbing; }
+.win-title .grip { opacity: 0.6; }
+.win-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.win-close { border: none; background: transparent; color: white; font-size: 1.2rem; line-height: 1; padding: 0 0.4rem; }
+.win-body { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
+.win-resize {
+  position: absolute; right: 0; bottom: 0; width: 18px; height: 18px; cursor: nwse-resize; touch-action: none;
+  background: linear-gradient(135deg, transparent 50%, #9fb5a6 50%, #9fb5a6 60%, transparent 60%, transparent 70%, #9fb5a6 70%, #9fb5a6 80%, transparent 80%);
+}
+.desk.narrow .win { position: static; margin-bottom: 1rem; height: auto; }
+.desk.narrow .win-title { cursor: default; }
+.desk.narrow .win-body { overflow: visible; }
+
+/* Panels fill their windows */
+.win .chat { height: 100%; position: static; border: none; border-radius: 0; flex: 1; min-height: 0; }
+.desk.narrow .win .chat { height: 60vh; }
+.win .whiteboard { flex: 1; min-height: 0; display: flex; flex-direction: column; border: none; border-radius: 0; padding: 0.5rem; }
+.win .whiteboard > header > h3 { display: none; }
+.canvas-wrap { flex: 1; min-height: 0; display: flex; justify-content: center; align-items: flex-start; }
+.win .whiteboard canvas { width: auto; height: auto; max-width: 100%; max-height: 100%; aspect-ratio: auto; }
+.desk.narrow .win .whiteboard canvas { width: 100%; }
+.win .feature { border: none; border-radius: 0; }
+
+/* ---- Map card + legend ---- */
+.map-card {
+  position: absolute; z-index: 800; width: 280px; transform: translate(-50%, calc(-100% - 16px));
+  background: white; border-radius: var(--radius); padding: 0.9rem 1rem; box-shadow: 0 6px 24px #0004;
+}
+.map-card::after {
+  content: ''; position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%) rotate(45deg);
+  width: 16px; height: 16px; background: white; box-shadow: 3px 3px 6px #0001;
+}
+.map-card.unplaced { left: 50%; top: 1rem; transform: translateX(-50%); }
+.map-card.unplaced::after { display: none; }
+.map-card .close { position: absolute; top: 0.3rem; right: 0.4rem; border: none; background: none; font-size: 1.3rem; }
+.map-card select { width: 100%; }
+.map-card .admin-link { margin-top: 0.5rem; font-size: 0.85rem; }
+.building-card .button.primary { color: white; }
+.map-legend {
+  position: absolute; left: 0.75rem; bottom: 1.5rem; z-index: 700; display: flex; flex-direction: column; gap: 0.15rem;
+  background: #fffe; padding: 0.5rem 0.7rem; border-radius: 8px; box-shadow: 0 2px 8px #0002; font-size: 0.8rem;
+}
+.map-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 0.35rem; vertical-align: -1px; border: 1px solid #1e4d2b55; }

@@ -325,6 +325,7 @@ export default function Whiteboard(props: Props) {
           <button onClick={onClearMine}>Clear mine</button>
         </div>
       </header>
+      <div className="canvas-wrap">
       <canvas
         ref={canvasRef}
         width={BOARD_WIDTH}
@@ -334,6 +335,7 @@ export default function Whiteboard(props: Props) {
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
       />
+      </div>
       <p className="board-hint">
         {mode === 'select'
           ? groupBox

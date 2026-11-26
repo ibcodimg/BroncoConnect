@@ -64,6 +64,10 @@ export const api = {
   conversations: () => request<Conversation[]>('/dms'),
   thread: (publicId: string) => request<DirectMessage[]>(`/dms/${encodeURIComponent(publicId)}`),
 
+  mapLinks: () => request<Record<string, string>>('/map-links'),
+  /** Admin: roomId = a room id, 'none' (not a chatroom), or null (back to automatic matching). */
+  setMapLink: (featureId: string, roomId: string | null) => request<{ ok: true }>('/map-links', json('PUT', { featureId, roomId })),
+
   report: (r: { targetId: string; reason: ReportReason; details?: string; roomId?: string }) =>
     request<{ ok: true }>('/reports', json('POST', r)),
 
