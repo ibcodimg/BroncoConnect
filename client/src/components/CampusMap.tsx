@@ -1,13 +1,13 @@
 import type { BuildingSummary } from '@shared/types';
 import type { Feature, FeatureCollection } from 'geojson';
-import L, { type LatLngBoundsExpression, type Layer, type Map as LeafletMap, type PathOptions } from 'leaflet';
+import L, { type LatLngBoundsLiteral, type Layer, type Map as LeafletMap, type PathOptions } from 'leaflet';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { GeoJSON, MapContainer, Popup, TileLayer } from 'react-leaflet';
 import { roomIdForFeature, type FeatureProps } from '@shared/buildingMatch';
 import BuildingCard from './BuildingCard';
 
 // Fallback view of the main CPP campus, used until building outlines load.
-const CAMPUS_BOUNDS: LatLngBoundsExpression = [
+const CAMPUS_BOUNDS: LatLngBoundsLiteral = [
   [34.0515, -117.8295],
   [34.0625, -117.8135],
 ];
