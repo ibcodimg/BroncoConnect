@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type FormE
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useMutes } from '../lib/mutes';
+import { LOOKING_SHORT } from '../lib/labels';
 import { useSession } from '../lib/session';
 
 interface Target {
@@ -46,12 +47,6 @@ const REASON_LABELS: Record<ReportReason, string> = {
   other: 'Something else',
 };
 
-const LOOKING_LABELS: Record<string, string> = {
-  friends: 'friends',
-  tutoring: 'tutoring',
-  'study-group': 'a study group',
-  tutor4tutor: 'Tutor4Tutor',
-};
 
 function UserCardModal({ target, onClose }: { target: Target; onClose: () => void }) {
   const { me } = useSession();
@@ -116,11 +111,19 @@ function UserCardModal({ target, onClose }: { target: Target; onClose: () => voi
               {person.displayName} {person.online && <span className="online-dot" title="Online now" />}
             </h2>
             <p className="meta">
-              {[person.major, person.status].filter(Boolean).join(' · ') || 'No profile details'}
-              {person.lookingFor.length > 0 && <> · looking for {person.lookingFor.map((l) => LOOKING_LABELS[l] ?? l).join(', ')}</>}
+              {[person.majors.join(', '), person.status].filter(Boolean).join(' · ') || 'No profile details'}
+              {person.lookingFor.length > 0 && <> · looking for {person.lookingFor.map((l) => LOOKING_SHORT[l] ?? l).join(', ')}</>}
             </p>
-            {person.strongSubjects.length > 0 && <p className="meta">Good at: {person.strongSubjects.join(', ')}</p>}
-            {person.needHelpSubjects.length > 0 && <p className="meta">Wants help with: {person.needHelpSubjects.join(', ')}</p>}
+            {(person.strongSubjects.length > 0 || person.coursesTaken.length > 0) && (
+              <p className="meta">
+                Can help with: {[...person.strongSubjects, ...person.coursesTaken.map((c) => c.course + (c.professor ? ` (${c.professor})` : ''))].join(', ')}
+              </p>
+            )}
+            {(person.needHelpSubjects.length > 0 || person.coursesNeedHelp.length > 0) && (
+              <p className="meta">
+                Wants help with: {[...person.needHelpSubjects, ...person.coursesNeedHelp.map((c) => c.course + (c.professor ? ` (${c.professor})` : ''))].join(', ')}
+              </p>
+            )}
 
             {person.isMe ? (
               <p className="hint">This is you.</p>

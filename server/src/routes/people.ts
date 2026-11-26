@@ -44,6 +44,8 @@ peopleRouter.get('/:publicId', async (req, res, next) => {
       online: isOnline(u.publicId),
       strongSubjects: u.strongSubjects ?? [],
       needHelpSubjects: u.needHelpSubjects ?? [],
+      coursesTaken: (u.coursesTaken ?? []).map((c) => ({ course: c.course, professor: c.professor ?? undefined })),
+      coursesNeedHelp: (u.coursesNeedHelp ?? []).map((c) => ({ course: c.course, professor: c.professor ?? undefined })),
       friendStatus: u.publicId === me.publicId ? 'none' : await friendStatus(me.publicId, u.publicId),
       isMe: u.publicId === me.publicId,
     };

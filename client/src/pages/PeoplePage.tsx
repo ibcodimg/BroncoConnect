@@ -71,7 +71,7 @@ export default function PeoplePage() {
               <li key={u.publicId}>
                 {u.online && <span className="online-dot" title="Online" />}
                 <UserName publicId={u.publicId} name={u.displayName} />
-                <span className="meta">{[u.major, u.status].filter(Boolean).join(' · ')}</span>
+                <span className="meta">{[u.majors.join(', '), u.status].filter(Boolean).join(' · ')}</span>
               </li>
             ))}
           </ul>
@@ -130,7 +130,7 @@ export default function PeoplePage() {
                 <UserName publicId={m.publicId} name={m.displayName} />
               </h3>
               <p className="meta">
-                {[m.major, m.status].filter(Boolean).join(' · ')}
+                {[m.majors.join(', '), m.status].filter(Boolean).join(' · ')}
                 {m.lookingFor.length > 0 && ` · looking for ${m.lookingFor.join(', ')}`}
               </p>
               <ul className="overlaps">

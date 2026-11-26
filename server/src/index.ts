@@ -15,6 +15,8 @@ import { friendsRouter } from './routes/friends';
 import { mapLinksRouter } from './routes/mapLinks';
 import { peopleRouter } from './routes/people';
 import { reportsRouter } from './routes/reports';
+import { tagsRouter } from './routes/tags';
+import { tutoringRouter } from './routes/tutoring';
 import { usersRouter } from './routes/users';
 import { registerSockets, type SocketData } from './sockets';
 
@@ -33,6 +35,8 @@ app.use('/api/dms', dmsRouter);
 app.use('/api/reports', reportsRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/map-links', mapLinksRouter);
+app.use('/api/tags', tagsRouter);
+app.use('/api/tutoring', tutoringRouter);
 
 // In production, serve the built client from the same server.
 const here = path.dirname(fileURLToPath(import.meta.url));

@@ -22,8 +22,9 @@ CS 4800 project by Bill Ma. The original pitch is in [`docs/CS4800_Project_Idea_
 | ✅ scaffolded | **Building-specific tools**: a graphing calculator in Building 8 (College of Science, home of Math & Stats). |
 | ✅ scaffolded | **Anonymous, optional profile**: display name, major, commuter or resident, what you're looking for, and your weekly schedule. No account; the site remembers you through a random id in your browser. |
 | ✅ scaffolded | **Find people**: matches by same building, same day, and overlapping time. |
-| 🔜 planned | **Tutor4Tutor**: find someone who has taken your course or professor and trade help. |
-| 🔜 planned | **Proficiency matching**: pair what you're good at with what others need help with, and form peer groups. |
+| ✅ | **Tutor4Tutor**: trade help with someone who knows what you need (and needs what you know), or tutor one-sided as a volunteer. Courses can include the professor, and same-professor matches and people on campus at the same times rank first. |
+| ✅ | **Profile tags**: majors from CPP's official list, plus subject and course tags with suggestions, custom tags, and a count of how many other people use each one. |
+| 🔜 planned | **Study groups**: form peer groups from matching subjects. |
 | 🔜 planned | Reporting and moderation, direct messages, a lasso tool for copying part of a board, and more building tools. |
 
 ## Tech stack

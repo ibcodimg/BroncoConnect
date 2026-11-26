@@ -13,6 +13,7 @@ import MessagesPage from './pages/MessagesPage';
 import PeoplePage from './pages/PeoplePage';
 import ProfilePage from './pages/ProfilePage';
 import RoomPage from './pages/RoomPage';
+import TutoringPage from './pages/TutoringPage';
 
 function Header() {
   const { me, unreadDms, setUnreadDms } = useSession();
@@ -39,6 +40,7 @@ function Header() {
         <NavLink to="/room/campus">Campus chat</NavLink>
         <RecentRooms />
         <NavLink to="/people">People</NavLink>
+        <NavLink to="/tutoring">Tutor4Tutor</NavLink>
         <NavLink to="/messages">
           Messages{unreadDms > 0 && <span className="badge">{unreadDms}</span>}
         </NavLink>
@@ -73,6 +75,7 @@ function Shell() {
           <Route path="/" element={<CampusPage />} />
           <Route path="/room/:roomId" element={<RoomPage />} />
           <Route path="/people" element={<PeoplePage />} />
+          <Route path="/tutoring" element={<TutoringPage />} />
           <Route path="/messages" element={<MessagesPage />} />
           <Route path="/messages/:publicId" element={<MessagesPage />} />
           <Route path="/profile" element={<ProfilePage />} />

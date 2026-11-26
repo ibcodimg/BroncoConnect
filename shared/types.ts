@@ -3,7 +3,11 @@
 export const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 export type Day = (typeof DAYS)[number];
 
-export const LOOKING_FOR = ['friends', 'tutoring', 'study-group', 'tutor4tutor'] as const;
+/**
+ * tutoring = looking for a tutor · tutor-others = willing to tutor one-sided (nothing in return)
+ * tutor4tutor = open to trading help
+ */
+export const LOOKING_FOR = ['friends', 'tutoring', 'tutor-others', 'tutor4tutor', 'study-group'] as const;
 export type LookingFor = (typeof LOOKING_FOR)[number];
 
 export type CampusStatus = 'commuter' | 'resident';
@@ -20,22 +24,30 @@ export interface ScheduleBlock {
   label?: string;
 }
 
+/** A course you've taken or want help in. Professor is optional ("same professor" matches rank higher). */
+export interface CourseEntry {
+  course: string;
+  professor?: string;
+}
+
 /** Everything is optional — BroncoConnect never requires identifying info. */
 export interface UserProfile {
   displayName?: string;
-  major?: string;
+  majors: string[];
   status?: CampusStatus;
   schedule: ScheduleBlock[];
   lookingFor: LookingFor[];
   strongSubjects: string[];
   needHelpSubjects: string[];
+  coursesTaken: CourseEntry[];
+  coursesNeedHelp: CourseEntry[];
 }
 
 /** What other users can see about you. Never includes your private anonId. */
 export interface PublicUser {
   publicId: string;
   displayName: string;
-  major?: string;
+  majors: string[];
   status?: CampusStatus;
   lookingFor: LookingFor[];
 }
@@ -52,6 +64,8 @@ export interface PublicProfile extends PublicUser {
   online: boolean;
   strongSubjects: string[];
   needHelpSubjects: string[];
+  coursesTaken: CourseEntry[];
+  coursesNeedHelp: CourseEntry[];
   /** Your relationship to them. */
   friendStatus: FriendStatus;
   isMe: boolean;
@@ -120,6 +134,34 @@ export interface MuteRule {
   kind: 'draw' | 'text';
   /** roomId, or 'all' for every building */
   scope: string;
+}
+
+/** How many OTHER people use each tag: [label, count], most popular first. */
+export interface TagStats {
+  majors: [string, number][];
+  subjects: [string, number][];
+  courses: [string, number][];
+}
+
+export interface TutoringMatch extends PublicUser {
+  online: boolean;
+  /** Subjects/courses they can help you with. */
+  theyCanTeach: string[];
+  /** Subjects/courses you can help them with. */
+  youCanTeach: string[];
+  /** Courses where you both list the same professor. */
+  sameProfessor: string[];
+  /** Times you're both in the same building. */
+  overlaps: ScheduleBlock[];
+}
+
+export interface TutoringResults {
+  /** Tutor4Tutor: you each help the other. */
+  trades: TutoringMatch[];
+  /** One-sided: they volunteer to tutor what you need. */
+  canHelpYou: TutoringMatch[];
+  /** One-sided: you volunteer, they need what you know. */
+  youCanHelp: TutoringMatch[];
 }
 
 export interface Match extends PublicUser {

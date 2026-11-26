@@ -15,7 +15,7 @@ import { emitToUser, markOffline, markOnline } from '../lib/realtime';
 import { DirectMessage } from '../models/DirectMessage';
 import { Message } from '../models/Message';
 import { StrokeModel } from '../models/Stroke';
-import { User, displayNameOf } from '../models/User';
+import { User, displayNameOf, majorsOf } from '../models/User';
 import { toDM } from '../routes/dms';
 
 export interface SocketData {
@@ -95,7 +95,7 @@ export function registerSockets(io: IO) {
         ack?.({
           publicId: user.publicId,
           displayName: displayNameOf(user),
-          major: user.major ?? undefined,
+          majors: majorsOf(user),
           status: (user.status as 'commuter' | 'resident' | undefined) ?? undefined,
           lookingFor: user.lookingFor as never,
           hasDisplayName: !!user.displayName?.trim(),

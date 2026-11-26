@@ -315,3 +315,43 @@ input, select { font: inherit; padding: 0.35rem 0.5rem; border: 1px solid var(--
 .admin-tools { display: flex; flex-direction: column; align-items: flex-start; gap: 0.2rem; margin-top: 0.6rem; padding-top: 0.5rem; border-top: 1px dashed var(--line); font-size: 0.85rem; }
 .map-wrap.is-drawing .campus-map { cursor: crosshair; }
 .drawing-card { border-top: 4px solid var(--gold); }
+
+/* ---- Tags + Tutor4Tutor ---- */
+.tag-input { position: relative; margin-bottom: 0.9rem; }
+.tag-label { display: block; margin-bottom: 0.25rem; }
+.tag-box {
+  display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; min-height: 2.4rem;
+  padding: 0.3rem 0.4rem; border: 1px solid var(--line); border-radius: 8px; background: white; cursor: text;
+}
+.tag-box.static { cursor: default; }
+.tag-box input { flex: 1; min-width: 160px; border: none; outline: none; padding: 0.2rem; }
+.tag {
+  display: inline-flex; align-items: center; gap: 0.2rem; background: #e8f3ec; border: 1px solid #b9dcc4; color: var(--green);
+  border-radius: 999px; padding: 0.1rem 0.25rem 0.1rem 0.6rem; font-size: 0.9rem; margin-right: 0.25rem;
+}
+.tag small { color: #4c7a5b; }
+.tag em { color: #4c7a5b; font-style: normal; }
+.tag button { border: none; background: none; color: var(--green); padding: 0 0.3rem; font-size: 1rem; line-height: 1; }
+.tag.small { padding: 0.05rem 0.55rem; font-size: 0.85rem; }
+.tag-suggestions {
+  position: absolute; left: 0; right: 0; z-index: 50; list-style: none; margin: 0.2rem 0 0; padding: 0.3rem;
+  background: white; border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 6px 18px #0002; max-height: 280px; overflow: auto;
+}
+.tag-suggestions li { display: flex; justify-content: space-between; gap: 1rem; padding: 0.35rem 0.5rem; border-radius: 6px; cursor: pointer; }
+.tag-suggestions li.active { background: #eef4ef; }
+.tag-suggestions small { color: var(--muted); white-space: nowrap; }
+.course-add { margin-top: 0.4rem; }
+.course-add input { flex: 1; min-width: 140px; }
+.tutoring-fields { padding-bottom: 0.4rem; }
+
+.tutor-section { margin: 1.5rem 0; }
+.tutor-section h2 .count { font-size: 0.9rem; background: #eee; border-radius: 999px; padding: 0 0.5rem; vertical-align: middle; }
+.tutor-section .empty { color: var(--muted); }
+.tutor-list { list-style: none; padding: 0; display: grid; gap: 0.75rem; }
+.tutor-card { background: white; border: 1px solid var(--line); border-radius: var(--radius); padding: 0.75rem 1rem; }
+.tutor-card header { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+.tutor-card header .button { margin-left: auto; }
+.tutor-card p { margin: 0.4rem 0 0; }
+.tutor-card .highlight { color: #8a5a00; background: #fff4d6; display: inline-block; padding: 0.1rem 0.5rem; border-radius: 6px; }
+.profile label.inline { display: inline-flex; align-items: center; gap: 0.35rem; margin: 0.2rem 1.2rem 0.2rem 0; }
+.profile label.inline > input { display: inline; width: auto; margin: 0; }

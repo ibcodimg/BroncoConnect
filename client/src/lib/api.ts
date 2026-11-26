@@ -10,6 +10,8 @@ import type {
   PublicUser,
   ReportReason,
   ReportView,
+  TagStats,
+  TutoringResults,
   UserProfile,
 } from '@shared/types';
 import { getAnonId } from './identity';
@@ -57,6 +59,9 @@ export const api = {
   myProfile: () => request<MyProfile>(`/users/${getAnonId()}`),
   saveProfile: (profile: UserProfile) => request<MyProfile>(`/users/${getAnonId()}`, json('PUT', profile)),
   matches: () => request<Match[]>(`/users/${getAnonId()}/matches`),
+
+  tagStats: () => request<TagStats>('/tags/stats'),
+  tutoring: () => request<TutoringResults>('/tutoring'),
 
   searchPeople: (q: string) => request<(PublicUser & { online: boolean })[]>(`/people/search?q=${encodeURIComponent(q)}`),
   person: (publicId: string) => request<PublicProfile>(`/people/${encodeURIComponent(publicId)}`),

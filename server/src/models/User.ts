@@ -13,6 +13,14 @@ const scheduleBlockSchema = new Schema(
   { _id: false },
 );
 
+const courseSchema = new Schema(
+  {
+    course: { type: String, required: true, maxlength: 40 },
+    professor: { type: String, maxlength: 40 },
+  },
+  { _id: false },
+);
+
 const userSchema = new Schema(
   {
     /**
@@ -23,7 +31,11 @@ const userSchema = new Schema(
     /** Safe-to-share id used in chat, whiteboards and matches. */
     publicId: { type: String, required: true, unique: true, default: () => randomBytes(8).toString('hex') },
     displayName: { type: String, maxlength: 32, trim: true },
+    /** Legacy single major from early versions; read via majorsOf(). */
     major: { type: String, maxlength: 60, trim: true },
+    majors: { type: [{ type: String, maxlength: 40 }], default: [] },
+    coursesTaken: { type: [courseSchema], default: [] },
+    coursesNeedHelp: { type: [courseSchema], default: [] },
     status: { type: String, enum: ['commuter', 'resident'] },
     schedule: { type: [scheduleBlockSchema], default: [] },
     lookingFor: { type: [{ type: String, enum: LOOKING_FOR }], default: [] },
@@ -42,6 +54,11 @@ userSchema.index({ displayName: 1 });
 
 export type UserDoc = InferSchemaType<typeof userSchema>;
 export const User = model('User', userSchema);
+
+/** Majors, falling back to the old single `major` field. */
+export function majorsOf(u: { majors?: string[] | null; major?: string | null }): string[] {
+  return u.majors?.length ? u.majors : u.major ? [u.major] : [];
+}
 
 export function displayNameOf(user: { displayName?: string | null; publicId: string }): string {
   return user.displayName?.trim() || `Bronco #${user.publicId.slice(0, 4)}`;

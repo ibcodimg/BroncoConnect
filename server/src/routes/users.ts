@@ -1,38 +1,65 @@
 import { Router } from 'express';
 import { findRoom } from '../../../shared/buildings';
 import { isValidBlock, scheduleOverlaps } from '../../../shared/schedule';
-import { LOOKING_FOR, type Match, type ScheduleBlock, type UserProfile } from '../../../shared/types';
+import { normalizeCourse, uniqueTags } from '../../../shared/tags';
+import { LOOKING_FOR, type CourseEntry, type Match, type ScheduleBlock, type UserProfile } from '../../../shared/types';
 import { loadUser, requestIp } from '../lib/auth';
 import { banNotice } from '../lib/bans';
-import { User, displayNameOf } from '../models/User';
+import { User, displayNameOf, majorsOf } from '../models/User';
 
 export const usersRouter = Router();
 
 const ANON_ID = /^[A-Za-z0-9-]{16,64}$/;
 
+const courses = (v: unknown): CourseEntry[] =>
+  ((v as { course: string; professor?: string | null }[] | undefined) ?? []).map((c) => ({
+    course: c.course,
+    ...(c.professor ? { professor: c.professor } : {}),
+  }));
+
 function toProfile(u: {
   displayName?: string | null;
   major?: string | null;
+  majors?: string[] | null;
   status?: string | null;
   schedule: unknown;
   lookingFor: unknown;
   strongSubjects: unknown;
   needHelpSubjects: unknown;
+  coursesTaken?: unknown;
+  coursesNeedHelp?: unknown;
 }): UserProfile & { publicId?: string } {
   return {
     displayName: u.displayName ?? undefined,
-    major: u.major ?? undefined,
+    majors: majorsOf(u),
     status: (u.status as UserProfile['status']) ?? undefined,
     schedule: u.schedule as ScheduleBlock[],
     lookingFor: u.lookingFor as UserProfile['lookingFor'],
     strongSubjects: u.strongSubjects as string[],
     needHelpSubjects: u.needHelpSubjects as string[],
+    coursesTaken: courses(u.coursesTaken),
+    coursesNeedHelp: courses(u.coursesNeedHelp),
   };
 }
 
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) || undefined : undefined);
 const strList = (v: unknown, max: number) =>
   Array.isArray(v) ? v.map((s) => str(s, max)).filter((s): s is string => !!s).slice(0, 20) : [];
+
+/** Courses: normalized code, optional professor, deduped by course. */
+function courseList(v: unknown): CourseEntry[] {
+  if (!Array.isArray(v)) return [];
+  const seen = new Set<string>();
+  const out: CourseEntry[] = [];
+  for (const c of v.slice(0, 30) as Record<string, unknown>[]) {
+    const course = typeof c?.course === 'string' ? normalizeCourse(c.course) : '';
+    if (!course || seen.has(course.toLowerCase())) continue;
+    seen.add(course.toLowerCase());
+    const professor = str(c.professor, 40);
+    out.push({ course, ...(professor ? { professor } : {}) });
+  }
+  return out;
+}
 
 /** Keep only fields we know about, with sane limits. Everything is optional. */
 function sanitize(body: Record<string, unknown>): UserProfile {
@@ -49,14 +76,16 @@ function sanitize(body: Record<string, unknown>): UserProfile {
 
   return {
     displayName: str(body.displayName, 32),
-    major: str(body.major, 60),
+    majors: uniqueTags(strList(body.majors, 40), undefined, 3),
     status: body.status === 'commuter' || body.status === 'resident' ? body.status : undefined,
     schedule,
     lookingFor: (Array.isArray(body.lookingFor) ? body.lookingFor : []).filter((x): x is UserProfile['lookingFor'][number] =>
       (LOOKING_FOR as readonly string[]).includes(x as string),
     ),
-    strongSubjects: strList(body.strongSubjects, 40),
-    needHelpSubjects: strList(body.needHelpSubjects, 40),
+    strongSubjects: uniqueTags(strList(body.strongSubjects, 40)),
+    needHelpSubjects: uniqueTags(strList(body.needHelpSubjects, 40)),
+    coursesTaken: courseList(body.coursesTaken),
+    coursesNeedHelp: courseList(body.coursesNeedHelp),
   };
 }
 
@@ -86,7 +115,8 @@ usersRouter.put('/:anonId', async (req, res, next) => {
     const profile = sanitize(req.body ?? {});
     const user = await User.findOneAndUpdate(
       { anonId: req.params.anonId },
-      { $set: { ...profile, lastSeenAt: new Date() }, $setOnInsert: { anonId: req.params.anonId } },
+      // Saving replaces the legacy single `major` with the `majors` list.
+      { $set: { ...profile, lastSeenAt: new Date() }, $unset: { major: '' }, $setOnInsert: { anonId: req.params.anonId } },
       { upsert: true, new: true, setDefaultsOnInsert: true, runValidators: true },
     );
     res.json({ ...toProfile(user), publicId: user.publicId });
@@ -117,7 +147,7 @@ usersRouter.get('/:anonId/matches', async (req, res, next) => {
       .map((u) => ({
         publicId: u.publicId,
         displayName: displayNameOf(u),
-        major: u.major ?? undefined,
+        majors: majorsOf(u),
         status: (u.status as Match['status']) ?? undefined,
         lookingFor: u.lookingFor as Match['lookingFor'],
         overlaps: scheduleOverlaps(mine, u.schedule as ScheduleBlock[]),
