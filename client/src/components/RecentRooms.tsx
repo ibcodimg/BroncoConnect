@@ -1,4 +1,4 @@
-import { findRoom } from '@shared/buildings';
+import { findRoom, roomTag } from '@shared/buildings';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useRecentRooms } from '../lib/recentRooms';
@@ -48,7 +48,7 @@ export default function RecentRooms() {
             return (
               <li key={r.roomId} role="none">
                 <Link role="menuitem" to={`/room/${room.id}`} className={pathname === `/room/${room.id}` ? 'current' : ''}>
-                  <span className="num">{room.id === 'campus' ? '★' : room.number}</span>
+                  <span className="num">{roomTag(room)}</span>
                   <span className="name">{room.name}</span>
                   <span className="when">{ago(r.visitedAt)}</span>
                 </Link>

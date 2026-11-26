@@ -35,6 +35,11 @@ export function roomIdForFeature(props: FeatureProps | null | undefined, buildin
   for (const n of numberCandidates) {
     if (n && byNumber.has(n)) return byNumber.get(n)!;
   }
+  // Lettered annexes (24A, 79B, 209R…) join the main building when they don't have their own room.
+  for (const n of numberCandidates) {
+    const base = n?.replace(/[a-z]$/, '');
+    if (base && base !== n && byNumber.has(base)) return byNumber.get(base)!;
+  }
 
   for (const raw of names) {
     const n = normalizeName(raw);

@@ -1,3 +1,4 @@
+import { roomKicker } from '@shared/buildings';
 import type { BuildingSummary } from '@shared/types';
 import { Link } from 'react-router-dom';
 
@@ -9,7 +10,7 @@ const FEATURE_LABELS: Record<string, string> = {
 export default function BuildingCard({ building }: { building: BuildingSummary }) {
   return (
     <div className="building-card">
-      <p className="building-number">{building.id === 'campus' ? 'Campus-wide' : `Building ${building.number}`}</p>
+      {roomKicker(building) && <p className="building-number">{roomKicker(building)}</p>}
       <h2>{building.name}</h2>
       <ul className="stats">
         <li>

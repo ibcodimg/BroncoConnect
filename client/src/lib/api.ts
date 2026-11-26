@@ -44,6 +44,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 const json = (method: string, data?: unknown): RequestInit => ({ method, body: data === undefined ? undefined : JSON.stringify(data) });
 
 export type MyProfile = UserProfile & { publicId: string };
+export interface MapFixes {
+  links: Record<string, string>;
+  outlines: { id: string; roomId: string; coordinates: [number, number][] }[];
+}
 export type AdminUser = PublicUser & { lastIp?: string; isAdmin: boolean; lastSeenAt: string };
 
 export const api = {
@@ -64,7 +68,11 @@ export const api = {
   conversations: () => request<Conversation[]>('/dms'),
   thread: (publicId: string) => request<DirectMessage[]>(`/dms/${encodeURIComponent(publicId)}`),
 
-  mapLinks: () => request<Record<string, string>>('/map-links'),
+  mapLinks: () => request<MapFixes>('/map-links'),
+  /** Admin: save a hand-drawn outline ([lng, lat] corners). */
+  addOutline: (roomId: string, coordinates: [number, number][]) =>
+    request<{ id: string }>('/map-links/outlines', json('POST', { roomId, coordinates })),
+  removeOutline: (id: string) => request<{ ok: true }>(`/map-links/outlines/${id}`, json('DELETE')),
   /** Admin: roomId = a room id, 'none' (not a chatroom), or null (back to automatic matching). */
   setMapLink: (featureId: string, roomId: string | null) => request<{ ok: true }>('/map-links', json('PUT', { featureId, roomId })),
 

@@ -1,4 +1,4 @@
-import { findRoom } from '@shared/buildings';
+import { findRoom, roomKicker } from '@shared/buildings';
 import type { ChatMessage, RoomPresence, Stroke } from '@shared/types';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -214,7 +214,7 @@ function Room({ roomId }: { roomId: string }) {
   return (
     <div className="room-page">
       <header className="room-header">
-        <p className="building-number">{room.id === 'campus' ? 'Campus-wide' : `Building ${room.number}`}</p>
+        {roomKicker(room) && <p className="building-number">{roomKicker(room)}</p>}
         <h1>{room.name}</h1>
         <PresenceBar presence={presence} myId={myId} roomId={roomId} />
       </header>

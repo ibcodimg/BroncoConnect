@@ -77,7 +77,7 @@ function UserCardModal({ target, onClose }: { target: Target; onClose: () => voi
   }, [onClose]);
 
   const room = target.roomId && target.roomId !== 'campus' ? findRoom(target.roomId) : undefined;
-  const roomLabel = room ? `Building ${room.number}` : target.roomId === 'campus' ? 'the campus chat' : '';
+  const roomLabel = room ? (room.number ? `Building ${room.number}` : room.name) : target.roomId === 'campus' ? 'the campus chat' : '';
 
   const friendAction = async (fn: () => Promise<unknown>) => {
     setBusy(true);

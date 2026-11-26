@@ -29,3 +29,10 @@ test('does not match unrelated buildings', () => {
   assert.equal(match({}), null);
   assert.equal(match(null), null);
 });
+
+test('lettered annexes join their main building unless they have their own room', () => {
+  assert.equal(match({ name: 'Building 24C' }), 'building-24');
+  assert.equal(match({ name: 'Building 79B - Collins College of Hospitality Management' }), 'building-79');
+  assert.equal(match({ name: 'Building 4A - BioTrek Learning Center' }), 'building-4a');
+  assert.equal(match({ name: 'Building 209R: John T. Lyle Center for Regenerative Studies' }), 'building-209');
+});

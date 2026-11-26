@@ -1,3 +1,4 @@
+import { roomTag } from '@shared/buildings';
 import type { BuildingSummary } from '@shared/types';
 import { useEffect, useMemo, useState } from 'react';
 import CampusMap from '../components/CampusMap';
@@ -32,7 +33,7 @@ export default function CampusPage() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return buildings.filter((b) => !q || b.name.toLowerCase().includes(q) || b.number === q);
+    return buildings.filter((b) => !q || b.name.toLowerCase().includes(q) || b.number.toLowerCase() === q);
   }, [buildings, query]);
 
   return (
@@ -49,7 +50,7 @@ export default function CampusPage() {
           {filtered.map((b) => (
             <li key={b.id}>
               <button className={b.id === selectedId ? 'active' : ''} onClick={() => setSelectedId(b.id)}>
-                <span className="num">{b.id === 'campus' ? '★' : b.number}</span>
+                <span className="num">{roomTag(b)}</span>
                 <span className="name">{b.name}</span>
                 {b.onlineCount > 0 && <span className="badge">{b.onlineCount}</span>}
               </button>

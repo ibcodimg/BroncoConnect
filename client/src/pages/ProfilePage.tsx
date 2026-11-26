@@ -9,7 +9,7 @@ import { useSession } from '../lib/session';
 const SCOPE_LABEL = (scope: string) => {
   if (scope === 'all') return 'everywhere';
   const b = BUILDINGS.find((x) => x.id === scope);
-  return b ? `in Building ${b.number}` : scope === 'campus' ? 'in campus chat' : scope;
+  return b ? (b.number ? `in Building ${b.number}` : `in ${b.name}`) : scope === 'campus' ? 'in campus chat' : scope;
 };
 
 const EMPTY: UserProfile = { schedule: [], lookingFor: [], strongSubjects: [], needHelpSubjects: [] };
@@ -154,7 +154,8 @@ export default function ProfilePage() {
             <select value={b.buildingId} onChange={(e) => setBlock(i, { buildingId: e.target.value })}>
               {BUILDINGS.map((bld) => (
                 <option key={bld.id} value={bld.id}>
-                  {bld.number} · {bld.name}
+                  {bld.number ? `${bld.number} · ` : ''}
+                  {bld.name}
                 </option>
               ))}
             </select>
