@@ -15,7 +15,7 @@ const reportSchema = new Schema(
     messageId: { type: String },
     /** Reported message + up to 5 before/after (snapshot; DMs only from the reporter's own conversation). */
     surrounding: {
-      type: [{ authorId: String, authorName: String, text: String, createdAt: Date, reported: Boolean, _id: false }],
+      type: [{ authorId: String, authorName: String, text: String, createdAt: Date, reported: Boolean, edits: [String], _id: false }],
       default: [],
     },
     /** Reported person's recent drawings at report time: [{ roomId, strokes }]. */

@@ -13,7 +13,9 @@ export const reportsRouter = Router();
 reportsRouter.use(requireUser);
 
 const OBJECT_ID = /^[a-f0-9]{24}$/;
-type Line = { authorId: string; authorName: string; text: string; createdAt: Date; reported?: boolean };
+type Line = { authorId: string; authorName: string; text: string; createdAt: Date; reported?: boolean; edits?: string[] };
+const versionsOf = (m: { edits?: { text?: string | null }[] | null }) =>
+  m.edits && m.edits.length > 0 ? { edits: m.edits.map((e) => e.text ?? '') } : {};
 
 /** Up to 5 messages before and after a chat message, in order. */
 async function chatContext(msg: { _id: unknown; roomId: string; createdAt?: Date }): Promise<Line[]> {
@@ -27,6 +29,7 @@ async function chatContext(msg: { _id: unknown; roomId: string; createdAt?: Date
     authorName: m.authorName,
     text: m.text,
     createdAt: m.createdAt ?? at,
+    ...versionsOf(m),
     ...(reported ? { reported } : {}),
   });
   return [...before.reverse().map((m) => line(m)), line(msg as (typeof before)[number], true), ...after.map((m) => line(m))];
@@ -47,6 +50,7 @@ async function dmContext(dm: { _id: unknown; from: string; to: string; createdAt
     authorName: names.get(m.from) ?? 'Someone',
     text: m.text,
     createdAt: m.createdAt ?? at,
+    ...versionsOf(m),
     ...(reported ? { reported } : {}),
   });
   return [...before.reverse().map((m) => line(m)), line(dm as (typeof before)[number], true), ...after.map((m) => line(m))];

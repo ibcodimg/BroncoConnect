@@ -6,6 +6,9 @@ const dmSchema = new Schema(
     to: { type: String, required: true }, // publicId
     text: { type: String, required: true, maxlength: 1000 },
     read: { type: Boolean, default: false },
+    editedAt: { type: Date },
+    /** Earlier versions (oldest first). Only the two people in the conversation ever see them. */
+    edits: { type: [{ text: String, editedAt: Date, _id: false }], default: [] },
   },
   { timestamps: { createdAt: true, updatedAt: false } },
 );

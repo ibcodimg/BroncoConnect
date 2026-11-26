@@ -349,6 +349,45 @@ export function registerSockets(io: IO) {
       }
     });
 
+    /** Private-message edits and deletes. Only the sender can do either, and neither is ever written to the audit log. */
+    const toBoth = <E extends 'dm:edited' | 'dm:removed'>(from: string, to: string, event: E, ...args: Parameters<ServerToClientEvents[E]>) => {
+      emitToUser(from, event, ...args); // all of the sender's tabs, including this one
+      emitToUser(to, event, ...args);
+    };
+
+    socket.on('dm:edit', async ({ id, text }) => {
+      const me = requireMe();
+      if (!me || typeof id !== 'string' || !MESSAGE_ID.test(id) || typeof text !== 'string') return;
+      const clean = text.trim().slice(0, 1000);
+      if (!clean) return;
+      const now = Date.now();
+      if (now - socket.data.lastDmAt < 400) return socket.emit('error:message', 'Slow down a little.');
+      socket.data.lastDmAt = now;
+      try {
+        const dm = await DirectMessage.findOne({ _id: id, from: me.publicId });
+        if (!dm || dm.text === clean) return;
+        if ((dm.edits?.length ?? 0) >= MAX_VERSIONS) return socket.emit('error:message', 'This message has been edited too many times.');
+        dm.edits.push({ text: dm.text, editedAt: dm.editedAt ?? dm.createdAt });
+        dm.text = clean;
+        dm.editedAt = new Date();
+        await dm.save();
+        toBoth(dm.from, dm.to, 'dm:edited', toDM(dm.toObject()));
+      } catch (err) {
+        console.error('dm:edit', err);
+      }
+    });
+
+    socket.on('dm:delete', async ({ id }) => {
+      const me = requireMe();
+      if (!me || typeof id !== 'string' || !MESSAGE_ID.test(id)) return;
+      try {
+        const dm = await DirectMessage.findOneAndDelete({ _id: id, from: me.publicId }).lean();
+        if (dm) toBoth(dm.from, dm.to, 'dm:removed', { id, from: dm.from, to: dm.to });
+      } catch (err) {
+        console.error('dm:delete', err);
+      }
+    });
+
     socket.on('disconnect', () => {
       if (socket.data.me) markOffline(socket.data.me.publicId, socket.id);
       for (const roomId of socket.data.rooms) {

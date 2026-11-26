@@ -82,6 +82,7 @@ adminRouter.get('/reports', async (req, res, next) => {
           text: l.text ?? '',
           createdAt: (l.createdAt ?? new Date()).toISOString(),
           ...(l.reported ? { reported: true } : {}),
+          ...(l.edits && l.edits.length > 0 ? { edits: l.edits.map(String) } : {}),
         })),
         drawings: (Array.isArray(r.drawings) ? r.drawings : []) as { roomId: string; strokes: Stroke[] }[],
       };

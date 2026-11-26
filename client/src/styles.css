@@ -407,3 +407,4 @@ input, select { font: inherit; padding: 0.35rem 0.5rem; border: 1px solid var(--
 .versions li { padding: 0.15rem 0; }
 .versions small { color: var(--muted); }
 .versions p { margin: 0; color: #555; }
+.report-context .earlier-versions { color: var(--muted); font-size: 0.85em; }

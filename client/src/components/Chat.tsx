@@ -1,6 +1,7 @@
 import type { ChatMessage } from '@shared/types';
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useMutes } from '../lib/mutes';
+import { EditBox, EditedTag, Versions, useOpenHistory } from './MessageEditing';
 import ReportMessageDialog, { type ReportableMessage } from './ReportMessageDialog';
 import { UserName } from './UserCard';
 
@@ -17,13 +18,12 @@ interface Props {
 }
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-const dateTime = (iso: string) => new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 
 export default function Chat({ roomId, messages, myId, isAdmin, onSend, onDelete, onEdit }: Props) {
   const [text, setText] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
-  const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
-  const [history, setHistory] = useState<Set<string>>(new Set());
+  const [editing, setEditing] = useState<string | null>(null);
+  const history = useOpenHistory();
   const [reporting, setReporting] = useState<ReportableMessage | null>(null);
   const list = useRef<HTMLOListElement>(null);
   const { isMuted } = useMutes();
@@ -40,7 +40,7 @@ export default function Chat({ roomId, messages, myId, isAdmin, onSend, onDelete
 
   // If the message being edited disappears (deleted elsewhere), stop editing.
   useEffect(() => {
-    if (editing && !messages.some((m) => m.id === editing.id)) setEditing(null);
+    if (editing && !messages.some((m) => m.id === editing)) setEditing(null);
   }, [messages, editing]);
 
   const submit = (e: FormEvent) => {
@@ -51,38 +51,13 @@ export default function Chat({ roomId, messages, myId, isAdmin, onSend, onDelete
     setText('');
   };
 
-  const saveEdit = () => {
-    if (!editing) return;
-    const t = editing.text.trim();
-    const original = messages.find((m) => m.id === editing.id)?.text;
-    if (t && t !== original) onEdit(editing.id, t);
-    setEditing(null);
-  };
-
-  const onEditKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      saveEdit();
-    } else if (e.key === 'Escape') {
-      setEditing(null);
-    }
-  };
-
-  const toggleHistory = (id: string) =>
-    setHistory((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-
   return (
     <section className="chat">
       <ol ref={list} className="messages" aria-live="polite">
         {shown.length === 0 && <li className="empty">No messages yet. Say hi 👋</li>}
         {shown.map((m) => {
           const mine = m.author.publicId === myId;
-          const isEditing = editing?.id === m.id;
+          const isEditing = editing === m.id;
           return (
             <li
               key={m.id}
@@ -96,47 +71,22 @@ export default function Chat({ roomId, messages, myId, isAdmin, onSend, onDelete
             >
               <UserName className="author" publicId={m.author.publicId} name={m.author.displayName} roomId={roomId} />
               <time dateTime={m.createdAt}>{time(m.createdAt)}</time>
-              {m.editedAt && (
-                <span className="edited" title={`Edited ${dateTime(m.editedAt)}`}>
-                  (edited)
-                </span>
-              )}
+              <EditedTag editedAt={m.editedAt} />
 
               {isEditing ? (
-                <div className="edit-box">
-                  <textarea
-                    value={editing.text}
-                    onChange={(e) => setEditing({ id: m.id, text: e.target.value })}
-                    onKeyDown={onEditKey}
-                    maxLength={1000}
-                    rows={2}
-                    autoFocus
-                    aria-label="Edit message"
-                  />
-                  <div className="row">
-                    <button className="primary" onClick={saveEdit} disabled={!editing.text.trim()}>
-                      Save
-                    </button>
-                    <button onClick={() => setEditing(null)}>Cancel</button>
-                    <small className="hint">Enter to save · Esc to cancel</small>
-                  </div>
-                </div>
+                <EditBox
+                  initial={m.text}
+                  onSave={(t) => {
+                    onEdit(m.id, t);
+                    setEditing(null);
+                  }}
+                  onCancel={() => setEditing(null)}
+                />
               ) : (
                 <p>{m.text}</p>
               )}
 
-              {history.has(m.id) && m.edits && m.edits.length > 0 && (
-                <ol className="versions" aria-label="Earlier versions">
-                  {m.edits.map((v, i) => (
-                    <li key={i}>
-                      <small>
-                        {i === 0 ? 'Original' : `Version ${i + 1}`} · {dateTime(v.editedAt)}
-                      </small>
-                      <p>{v.text}</p>
-                    </li>
-                  ))}
-                </ol>
-              )}
+              {history.isOpen(m.id) && <Versions edits={m.edits} />}
 
               {selected === m.id && !isEditing && (
                 <div className="msg-actions">
@@ -144,7 +94,7 @@ export default function Chat({ roomId, messages, myId, isAdmin, onSend, onDelete
                     <button
                       className="link"
                       onClick={() => {
-                        setEditing({ id: m.id, text: m.text });
+                        setEditing(m.id);
                         setSelected(null);
                       }}
                     >
@@ -163,8 +113,8 @@ export default function Chat({ roomId, messages, myId, isAdmin, onSend, onDelete
                     </button>
                   )}
                   {m.edits && m.edits.length > 0 && (
-                    <button className="link" onClick={() => toggleHistory(m.id)}>
-                      🕘 {history.has(m.id) ? 'Hide' : 'View'} unedited version{m.edits.length > 1 ? 's' : ''}
+                    <button className="link" onClick={() => history.toggle(m.id)}>
+                      🕘 {history.isOpen(m.id) ? 'Hide' : 'View'} unedited version{m.edits.length > 1 ? 's' : ''}
                     </button>
                   )}
                   {!mine && (

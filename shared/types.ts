@@ -89,6 +89,10 @@ export interface DirectMessage {
   text: string;
   createdAt: string;
   read: boolean;
+  /** Set when the sender edited it. */
+  editedAt?: string;
+  /** Earlier versions, oldest first. Both people in the conversation can see them. */
+  edits?: { text: string; editedAt: string }[];
 }
 
 export interface Conversation {
@@ -107,6 +111,8 @@ export interface ReportContextLine {
   text: string;
   createdAt: string;
   reported?: boolean;
+  /** Earlier versions of this message at report time, oldest first. */
+  edits?: string[];
 }
 
 export interface ReportView {
@@ -325,6 +331,9 @@ export interface ClientToServerEvents {
   /** Move/resize/rotate: new points (and tool) for existing strokes. Same permissions as erasing. */
   'board:update': (payload: { roomId: string; strokes: Stroke[] }) => void;
   'dm:send': (payload: { to: string; text: string }, ack: (msg: DirectMessage | { error: string }) => void) => void;
+  /** Edit or delete a private message you sent. */
+  'dm:edit': (payload: { id: string; text: string }) => void;
+  'dm:delete': (payload: { id: string }) => void;
 }
 
 export interface ServerToClientEvents {
@@ -341,6 +350,8 @@ export interface ServerToClientEvents {
   'board:updated': (payload: { roomId: string; strokes: Stroke[] }) => void;
   'error:message': (message: string) => void;
   'dm:message': (message: DirectMessage) => void;
+  'dm:edited': (message: DirectMessage) => void;
+  'dm:removed': (payload: { id: string; from: string; to: string }) => void;
   'friend:update': () => void;
   banned: (notice: BanNotice) => void;
 }

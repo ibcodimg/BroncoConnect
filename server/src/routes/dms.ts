@@ -9,14 +9,30 @@ import { User } from '../models/User';
 export const dmsRouter = Router();
 dmsRouter.use(requireUser);
 
-export function toDM(d: { _id: unknown; from: string; to: string; text: string; read?: boolean | null; createdAt?: Date }): DM {
+export function toDM(d: {
+  _id: unknown;
+  from: string;
+  to: string;
+  text: string;
+  read?: boolean | null;
+  createdAt?: Date;
+  editedAt?: Date | null;
+  edits?: { text?: string | null; editedAt?: Date | null }[] | null;
+}): DM {
+  const created = d.createdAt ?? new Date();
   return {
     id: String(d._id),
     from: d.from,
     to: d.to,
     text: d.text,
     read: !!d.read,
-    createdAt: (d.createdAt ?? new Date()).toISOString(),
+    createdAt: created.toISOString(),
+    ...(d.editedAt
+      ? {
+          editedAt: d.editedAt.toISOString(),
+          edits: (d.edits ?? []).map((e) => ({ text: e.text ?? '', editedAt: (e.editedAt ?? created).toISOString() })),
+        }
+      : {}),
   };
 }
 

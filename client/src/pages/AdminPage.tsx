@@ -194,6 +194,12 @@ function Reports() {
                   {r.surrounding.map((l, i) => (
                     <li key={i} className={l.reported ? 'reported' : ''}>
                       <time>{fmt(l.createdAt)}</time> <strong>{l.authorName}:</strong> {l.text}
+                      {l.edits && l.edits.length > 0 && (
+                        <span className="earlier-versions">
+                          {' '}
+                          <em>(edited — earlier: {l.edits.map((t) => `“${t}”`).join(' → ')})</em>
+                        </span>
+                      )}
                     </li>
                   ))}
                 </ol>
