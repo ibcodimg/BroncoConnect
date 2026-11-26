@@ -37,8 +37,19 @@ app.use('/api/map-links', mapLinksRouter);
 // In production, serve the built client from the same server.
 const here = path.dirname(fileURLToPath(import.meta.url));
 const clientDist = path.resolve(here, '../../client/dist');
-app.use(express.static(clientDist));
-app.get(/^\/(?!api|socket\.io).*/, (_req, res, next) => {
+app.use(
+  express.static(clientDist, {
+    // Hashed JS/CSS can be cached forever; index.html and data files must always be re-checked
+    // so a new deploy shows up on the next refresh.
+    setHeaders: (res, file) => {
+      res.setHeader('Cache-Control', /[\\/]assets[\\/]/.test(file) ? 'public, max-age=31536000, immutable' : 'no-cache');
+    },
+  }),
+);
+// Client-side routes (e.g. /room/building-8) get the app. Paths that look like files (have a dot) and
+// weren't found above get a real 404 instead of index.html.
+app.get(/^\/(?!api\/|socket\.io)[^.]*$/, (_req, res, next) => {
+  res.setHeader('Cache-Control', 'no-cache');
   res.sendFile(path.join(clientDist, 'index.html'), (err) => err && next());
 });
 

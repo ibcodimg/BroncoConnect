@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
 import { BoardClipboardProvider } from './components/BoardClipboard';
 import ProfileNudge from './components/ProfileNudge';
+import RecentRooms from './components/RecentRooms';
 import { UserCardProvider } from './components/UserCard';
 import { api } from './lib/api';
 import { MuteProvider } from './lib/mutes';
@@ -36,6 +37,7 @@ function Header() {
           Campus
         </NavLink>
         <NavLink to="/room/campus">Campus chat</NavLink>
+        <RecentRooms />
         <NavLink to="/people">People</NavLink>
         <NavLink to="/messages">
           Messages{unreadDms > 0 && <span className="badge">{unreadDms}</span>}

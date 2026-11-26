@@ -93,3 +93,50 @@ export function translateTo(strokes: Stroke[], to: Point): Stroke[] {
   const dy = to.y - box.y;
   return strokes.map((s) => ({ ...s, points: s.points.map((p) => ({ x: Math.round(p.x + dx), y: Math.round(p.y + dy) })) }));
 }
+
+// ---- Transforms for selected drawings ----
+
+const mapPoints = (strokes: Stroke[], f: (p: Point) => Point): Stroke[] =>
+  strokes.map((s) => ({ ...s, points: s.points.map((p) => {
+    const q = f(p);
+    return { x: Math.round(q.x * 10) / 10, y: Math.round(q.y * 10) / 10 };
+  }) }));
+
+export function moveStrokes(strokes: Stroke[], dx: number, dy: number): Stroke[] {
+  return mapPoints(strokes, (p) => ({ x: p.x + dx, y: p.y + dy }));
+}
+
+/** Scale around an anchor point (the corner opposite the one being dragged). Negative factors flip. */
+export function scaleStrokes(strokes: Stroke[], anchor: Point, sx: number, sy: number): Stroke[] {
+  return mapPoints(strokes, (p) => ({ x: anchor.x + (p.x - anchor.x) * sx, y: anchor.y + (p.y - anchor.y) * sy }));
+}
+
+/**
+ * Rotate around a center. Rectangles and ellipses are stored as two corners, which can't express
+ * rotation, so they're turned into outline paths (drawn identically) first.
+ */
+export function rotateStrokes(strokes: Stroke[], center: Point, radians: number): Stroke[] {
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const asPaths = strokes.map((s) => (s.tool === 'rect' || s.tool === 'ellipse' ? { ...s, tool: 'pen' as const, points: strokePath(s) } : s));
+  return mapPoints(asPaths, (p) => {
+    const dx = p.x - center.x;
+    const dy = p.y - center.y;
+    return { x: center.x + dx * cos - dy * sin, y: center.y + dx * sin + dy * cos };
+  });
+}
+
+export type Handle = 'nw' | 'ne' | 'sw' | 'se' | 'rotate';
+
+/** Where the selection handles are, for a group box. `rotateOffset` = distance of the rotate knob above the box. */
+export function handlePositions(box: Rect, rotateOffset: number): Record<Handle, Point> {
+  return {
+    nw: { x: box.x, y: box.y },
+    ne: { x: box.x + box.w, y: box.y },
+    sw: { x: box.x, y: box.y + box.h },
+    se: { x: box.x + box.w, y: box.y + box.h },
+    rotate: { x: box.x + box.w / 2, y: box.y - rotateOffset },
+  };
+}
+
+export const OPPOSITE: Record<Exclude<Handle, 'rotate'>, Exclude<Handle, 'rotate'>> = { nw: 'se', ne: 'sw', sw: 'ne', se: 'nw' };

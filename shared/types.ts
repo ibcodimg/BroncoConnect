@@ -194,6 +194,8 @@ export interface ClientToServerEvents {
   'board:clear-mine': (payload: { roomId: string }) => void;
   /** Erase or delete strokes. Server only removes ones you're allowed to (yours, unlocked, or any if admin). */
   'board:erase': (payload: { roomId: string; strokeIds: string[] }) => void;
+  /** Move/resize/rotate: new points (and tool) for existing strokes. Same permissions as erasing. */
+  'board:update': (payload: { roomId: string; strokes: Stroke[] }) => void;
   'dm:send': (payload: { to: string; text: string }, ack: (msg: DirectMessage | { error: string }) => void) => void;
 }
 
@@ -204,6 +206,7 @@ export interface ServerToClientEvents {
   'board:history': (payload: { roomId: string; strokes: Stroke[] }) => void;
   'board:stroke': (payload: { roomId: string; stroke: Stroke }) => void;
   'board:removed': (payload: { roomId: string; strokeIds: string[] }) => void;
+  'board:updated': (payload: { roomId: string; strokes: Stroke[] }) => void;
   'error:message': (message: string) => void;
   'dm:message': (message: DirectMessage) => void;
   'friend:update': () => void;

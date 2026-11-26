@@ -36,17 +36,35 @@ if (process.argv.includes('--if-missing')) {
   }
 }
 
-const res = await fetch('https://overpass-api.de/api/interpreter', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'BroncoConnect student project' },
-  body: new URLSearchParams({ data: query }),
-}).catch((err) => {
-  console.error(`Could not reach OpenStreetMap: ${err.message}`);
-  process.exit(process.argv.includes('--if-missing') ? 0 : 1);
-});
-if (!res.ok) {
-  // Don't fail a deploy over map outlines — the building list still works without them.
-  console.error(`Overpass error ${res.status}: ${(await res.text()).slice(0, 300)}`);
+// Public Overpass servers are often busy; try a few mirrors.
+const MIRRORS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
+];
+
+let res = null;
+for (const url of MIRRORS) {
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'BroncoConnect student project' },
+      body: new URLSearchParams({ data: query }),
+      signal: AbortSignal.timeout(60_000),
+    });
+    if (r.ok) {
+      res = r;
+      break;
+    }
+    console.error(`${url} → ${r.status}`);
+  } catch (err) {
+    console.error(`${url} → ${err.message}`);
+  }
+}
+if (!res) {
+  // Don't fail a deploy over map outlines: the building list still works without them.
+  // Committing client/public/buildings.geojson avoids this download entirely.
+  console.error('Could not download building outlines from any OpenStreetMap mirror.');
   process.exit(process.argv.includes('--if-missing') ? 0 : 1);
 }
 const { elements } = await res.json();

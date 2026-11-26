@@ -67,3 +67,25 @@ test('translateTo moves the group so its top-left is at the target', () => {
     { x: 120, y: 220 },
   ]);
 });
+
+import { moveStrokes, rotateStrokes, scaleStrokes } from './geometry';
+
+test('moveStrokes shifts every point', () => {
+  const [m] = moveStrokes([s('line', [[0, 0], [10, 10]])], 5, -5);
+  assert.deepEqual(m.points, [{ x: 5, y: -5 }, { x: 15, y: 5 }]);
+});
+
+test('scaleStrokes scales away from the anchor', () => {
+  const [m] = scaleStrokes([s('rect', [[0, 0], [100, 50]])], { x: 0, y: 0 }, 2, 3);
+  assert.deepEqual(m.points, [{ x: 0, y: 0 }, { x: 200, y: 150 }]);
+  assert.equal(m.tool, 'rect');
+});
+
+test('rotateStrokes rotates around the center and turns rects into paths', () => {
+  const [line] = rotateStrokes([s('line', [[0, 0], [10, 0]])], { x: 0, y: 0 }, Math.PI / 2);
+  assert.deepEqual(line.points[1], { x: 0, y: 10 });
+  const [rect] = rotateStrokes([s('rect', [[0, 0], [10, 10]])], { x: 5, y: 5 }, Math.PI);
+  assert.equal(rect.tool, 'pen');
+  assert.equal(rect.points.length, 5);
+  assert.deepEqual(rect.points[0], { x: 10, y: 10 });
+});

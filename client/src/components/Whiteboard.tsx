@@ -1,4 +1,18 @@
-import { rectFrom, rectsIntersect, strokeBounds, strokeHit, translateTo, unionBounds, type Rect } from '@shared/geometry';
+import {
+  handlePositions,
+  moveStrokes,
+  OPPOSITE,
+  rectFrom,
+  rectsIntersect,
+  rotateStrokes,
+  scaleStrokes,
+  strokeBounds,
+  strokeHit,
+  translateTo,
+  unionBounds,
+  type Handle,
+  type Rect,
+} from '@shared/geometry';
 import { BOARD_HEIGHT, BOARD_WIDTH, type Point, type Stroke, type Tool } from '@shared/types';
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import { useBoardClipboard } from './BoardClipboard';
@@ -14,6 +28,8 @@ interface Props {
   isAdmin?: boolean;
   onAdd: (strokes: Stroke[]) => void;
   onErase: (strokeIds: string[]) => void;
+  /** Strokes that were moved / resized / rotated (same ids, new points). */
+  onUpdate: (strokes: Stroke[]) => void;
   onUndo: () => void;
   onClearMine: () => void;
   /** Muted strokes are hidden and can't be selected or erased. */
@@ -80,11 +96,35 @@ function dashedRect(ctx: CanvasRenderingContext2D, r: Rect, color: string) {
   ctx.restore();
 }
 
+/** Selection box with 4 resize corners and a rotate knob. `k` = board units per screen pixel. */
+function drawHandles(ctx: CanvasRenderingContext2D, box: Rect, k: number) {
+  const hp = handlePositions(box, 26 * k);
+  ctx.save();
+  ctx.strokeStyle = '#2471a3';
+  ctx.lineWidth = 1.5 * k;
+  ctx.strokeRect(box.x, box.y, box.w, box.h);
+  ctx.beginPath();
+  ctx.moveTo(box.x + box.w / 2, box.y);
+  ctx.lineTo(hp.rotate.x, hp.rotate.y);
+  ctx.stroke();
+  ctx.fillStyle = 'white';
+  const size = 9 * k;
+  for (const h of ['nw', 'ne', 'sw', 'se'] as const) {
+    ctx.fillRect(hp[h].x - size / 2, hp[h].y - size / 2, size, size);
+    ctx.strokeRect(hp[h].x - size / 2, hp[h].y - size / 2, size, size);
+  }
+  ctx.beginPath();
+  ctx.arc(hp.rotate.x, hp.rotate.y, 6 * k, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
 const isTyping = (t: EventTarget | null) =>
   t instanceof HTMLElement && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName));
 
 export default function Whiteboard(props: Props) {
-  const { title, strokes, myId, collaborative, isAdmin, onAdd, onErase, onUndo, onClearMine, isHidden } = props;
+  const { title, strokes, myId, collaborative, isAdmin, onAdd, onErase, onUpdate, onUndo, onClearMine, isHidden } = props;
   const boardKey = useRef(Symbol(title)).current;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const draft = useRef<Stroke | null>(null);
@@ -97,6 +137,9 @@ export default function Whiteboard(props: Props) {
   const [width, setWidth] = useState(4);
   const [locked, setLocked] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Move / resize / rotate in progress: the transformed copies are drawn instead of the originals.
+  const transform = useRef<{ kind: 'move' | 'scale' | 'rotate'; handle?: Handle; start: Point; box: Rect; originals: Stroke[] } | null>(null);
+  const [preview, setPreview] = useState<Stroke[] | null>(null);
   const clipboard = useBoardClipboard();
 
   const visible = useMemo(() => strokes.filter((s) => !isHidden?.(s)), [strokes, isHidden]);
@@ -112,6 +155,13 @@ export default function Whiteboard(props: Props) {
   }, [visible]);
 
   const selectedStrokes = visible.filter((s) => selected.has(s.id));
+  const canTransform = selectedStrokes.length > 0 && selectedStrokes.every(canErase);
+
+  /** Board units per CSS pixel (the canvas is drawn at 1600×1000 but shown smaller). */
+  const unitsPerPx = () => {
+    const w = canvasRef.current?.getBoundingClientRect().width;
+    return w ? BOARD_WIDTH / w : 2;
+  };
 
   const authors = useMemo(() => {
     const m = new Map<string, string>();
@@ -123,9 +173,13 @@ export default function Whiteboard(props: Props) {
     const ctx = canvasRef.current?.getContext('2d');
     if (!ctx) return;
     ctx.clearRect(0, 0, BOARD_WIDTH, BOARD_HEIGHT);
-    for (const s of visible) if (!erasing.has(s.id)) drawStroke(ctx, s);
+    const previewById = new Map((preview ?? []).map((s) => [s.id, s]));
+    for (const s of visible) if (!erasing.has(s.id)) drawStroke(ctx, previewById.get(s.id) ?? s);
     if (draft.current) drawStroke(ctx, draft.current);
-    for (const s of selectedStrokes) dashedRect(ctx, strokeBounds(s), '#2471a3');
+    const shown = selectedStrokes.map((s) => previewById.get(s.id) ?? s);
+    for (const s of shown) dashedRect(ctx, strokeBounds(s), '#2471a388');
+    const box = unionBounds(shown.map(strokeBounds));
+    if (box && mode === 'select' && canTransform) drawHandles(ctx, box, unitsPerPx());
     if (marquee) dashedRect(ctx, marquee, '#888');
   };
   useEffect(() => {
@@ -169,8 +223,12 @@ export default function Whiteboard(props: Props) {
     setMode('select');
   };
 
-  const actions = useRef({ copy, paste, deleteSelected, selectAll, onUndo, clear: () => setSelected(new Set()) });
-  actions.current = { copy, paste, deleteSelected, selectAll, onUndo, clear: () => setSelected(new Set()) };
+  const nudge = (dx: number, dy: number) => {
+    if (canTransform) onUpdate(moveStrokes(selectedStrokes, dx, dy));
+  };
+
+  const actions = useRef({ copy, paste, deleteSelected, selectAll, onUndo, nudge, clear: () => setSelected(new Set()) });
+  actions.current = { copy, paste, deleteSelected, selectAll, onUndo, nudge, clear: () => setSelected(new Set()) };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -184,12 +242,59 @@ export default function Whiteboard(props: Props) {
       else if (mod && key === 'z') a.onUndo();
       else if (key === 'delete' || key === 'backspace') a.deleteSelected();
       else if (key === 'escape') a.clear();
+      else if (key.startsWith('arrow')) {
+        const step = e.shiftKey ? 25 : 5;
+        a.nudge(key === 'arrowleft' ? -step : key === 'arrowright' ? step : 0, key === 'arrowup' ? -step : key === 'arrowdown' ? step : 0);
+      }
       else return;
       e.preventDefault();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [boardKey]);
+
+  // ---- move / resize / rotate ----
+  const ROTATE_OFFSET_PX = 26;
+  const HANDLE_HIT_PX = 12;
+
+  /** What dragging from point p would do to the current selection, if anything. */
+  const transformTargetAt = (p: Point): { kind: 'move' | 'scale' | 'rotate'; handle?: Handle; box: Rect } | null => {
+    if (!canTransform) return null;
+    const box = unionBounds(selectedStrokes.map(strokeBounds));
+    if (!box) return null;
+    const k = unitsPerPx();
+    const hp = handlePositions(box, ROTATE_OFFSET_PX * k);
+    const near = (q: Point) => Math.hypot(p.x - q.x, p.y - q.y) <= HANDLE_HIT_PX * k;
+    if (near(hp.rotate)) return { kind: 'rotate', handle: 'rotate', box };
+    for (const h of ['nw', 'ne', 'sw', 'se'] as const) if (near(hp[h])) return { kind: 'scale', handle: h, box };
+    const pad = 6 * k;
+    if (p.x >= box.x - pad && p.x <= box.x + box.w + pad && p.y >= box.y - pad && p.y <= box.y + box.h + pad) return { kind: 'move', box };
+    return null;
+  };
+
+  const applyTransform = (
+    tr: { kind: 'move' | 'scale' | 'rotate'; handle?: Handle; start: Point; box: Rect; originals: Stroke[] },
+    p: Point,
+    shift: boolean,
+  ): Stroke[] => {
+    const { box, start, originals } = tr;
+    if (tr.kind === 'move') return moveStrokes(originals, p.x - start.x, p.y - start.y);
+    if (tr.kind === 'rotate') {
+      const c = { x: box.x + box.w / 2, y: box.y + box.h / 2 };
+      let angle = Math.atan2(p.y - c.y, p.x - c.x) - Math.atan2(start.y - c.y, start.x - c.x);
+      if (shift) angle = Math.round(angle / (Math.PI / 12)) * (Math.PI / 12); // 15° steps
+      return rotateStrokes(originals, c, angle);
+    }
+    const hp = handlePositions(box, 0);
+    const handle = tr.handle as keyof typeof OPPOSITE;
+    const anchor = hp[OPPOSITE[handle]];
+    const corner = hp[handle];
+    const safe = (v: number) => (Math.abs(v) < 0.05 ? (v < 0 ? -0.05 : 0.05) : v);
+    let sx = box.w < 1 ? 1 : safe((p.x - anchor.x) / (corner.x - anchor.x));
+    let sy = box.h < 1 ? 1 : safe((p.y - anchor.y) / (corner.y - anchor.y));
+    if (shift) sx = sy = Math.abs(sx) > Math.abs(sy) ? sx : sy; // keep proportions
+    return scaleStrokes(originals, anchor, sx, sy);
+  };
 
   // ---- pointer handling ----
   const topmostAt = (p: Point) => [...visible].reverse().find((s) => strokeHit(s, p, 6));
@@ -207,6 +312,11 @@ export default function Whiteboard(props: Props) {
     lastPointer.current = p;
 
     if (mode === 'select') {
+      const t = transformTargetAt(p);
+      if (t) {
+        transform.current = { ...t, start: p, originals: selectedStrokes };
+        return;
+      }
       const hit = topmostAt(p);
       if (hit) {
         setSelected((prev) => {
@@ -246,7 +356,27 @@ export default function Whiteboard(props: Props) {
   const onPointerMove = (e: PointerEvent<HTMLCanvasElement>) => {
     const p = toBoard(e);
     lastPointer.current = p;
-    if (e.buttons === 0) return;
+    if (e.buttons === 0) {
+      // Hover feedback for selection handles.
+      if (mode === 'select') {
+        const t = transformTargetAt(p);
+        e.currentTarget.style.cursor = !t
+          ? ''
+          : t.kind === 'rotate'
+            ? 'grab'
+            : t.kind === 'move'
+              ? 'move'
+              : t.handle === 'nw' || t.handle === 'se'
+                ? 'nwse-resize'
+                : 'nesw-resize';
+      }
+      return;
+    }
+    const tr = transform.current;
+    if (tr) {
+      setPreview(applyTransform(tr, p, e.shiftKey));
+      return;
+    }
     if (mode === 'select' && marqueeStart.current) {
       setMarquee(rectFrom(marqueeStart.current, p));
       return;
@@ -268,6 +398,13 @@ export default function Whiteboard(props: Props) {
   };
 
   const onPointerUp = (e: PointerEvent<HTMLCanvasElement>) => {
+    if (transform.current) {
+      const changed = preview;
+      transform.current = null;
+      setPreview(null);
+      if (changed) onUpdate(changed);
+      return;
+    }
     if (mode === 'select' && marqueeStart.current && marquee) {
       const box = marquee;
       const hits = visible.filter((s) => rectsIntersect(strokeBounds(s), box)).map((s) => s.id);
@@ -339,7 +476,9 @@ export default function Whiteboard(props: Props) {
       <p className="board-hint">
         {mode === 'select'
           ? groupBox
-            ? `${selectedStrokes.length} selected · Ctrl+C copy · Ctrl+V paste at cursor · Delete erase · Esc deselect`
+            ? canTransform
+              ? `${selectedStrokes.length} selected · drag to move · corners resize (Shift keeps shape) · ◯ rotates · Ctrl+C/V · Delete`
+              : `${selectedStrokes.length} selected · some is someone's unerasable ink, so it can be copied but not moved`
             : 'Click a drawing or drag a box to select. Shift adds to the selection. Ctrl+A selects all.'
           : collaborative && locked
             ? '🔒 New ink is unerasable by others.'

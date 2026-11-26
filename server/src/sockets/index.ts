@@ -218,6 +218,37 @@ export function registerSockets(io: IO) {
       if (allowedIds.length < ids.length) socket.emit('error:message', "Some ink is unerasable — only its author can erase it.");
     });
 
+    socket.on('board:update', async ({ roomId, strokes }) => {
+      const me = requireMe();
+      if (!me || !inRoom(roomId) || !Array.isArray(strokes)) return;
+      const incoming = strokes.slice(0, 500).filter(validStroke);
+      if (incoming.length === 0) return;
+      const filter = me.isAdmin
+        ? { roomId, strokeId: { $in: incoming.map((s) => s.id) } }
+        : { roomId, strokeId: { $in: incoming.map((s) => s.id) }, $or: [{ authorId: me.publicId }, { locked: { $ne: true } }] };
+      const existing = new Map((await StrokeModel.find(filter).lean()).map((s) => [s.strokeId, s]));
+      const updated: Stroke[] = [];
+      for (const s of incoming) {
+        const old = existing.get(s.id);
+        if (!old) continue;
+        const points = s.points.map(({ x, y }) => ({ x, y }));
+        await StrokeModel.updateOne({ _id: old._id }, { $set: { points, tool: s.tool } });
+        // Author, color, width and lock stay as they were: only the shape changes.
+        updated.push({
+          id: old.strokeId,
+          authorId: old.authorId,
+          authorName: old.authorName ?? undefined,
+          tool: s.tool,
+          color: old.color,
+          width: old.width,
+          points,
+          ...(old.locked ? { locked: true } : {}),
+        });
+      }
+      if (updated.length) socket.to(roomId).emit('board:updated', { roomId, strokes: updated });
+      if (updated.length < incoming.length) socket.emit('error:message', "Some ink is unerasable — only its author can move it.");
+    });
+
     socket.on('board:undo', async ({ roomId }) => {
       const me = requireMe();
       if (!me || !inRoom(roomId)) return;

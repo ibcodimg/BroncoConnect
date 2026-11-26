@@ -9,6 +9,7 @@ import { useOpenUser } from '../components/UserCard';
 import Whiteboard from '../components/Whiteboard';
 import { FEATURE_COMPONENTS, FEATURE_LABELS } from '../features';
 import { useMutes } from '../lib/mutes';
+import { recordVisit } from '../lib/recentRooms';
 import { useSession } from '../lib/session';
 import { socket } from '../lib/socket';
 
@@ -73,6 +74,10 @@ function Room({ roomId }: { roomId: string }) {
   const isDrawHidden = useCallback((s: Stroke) => mutes.isMuted(s.authorId, 'draw', roomId), [mutes, roomId]);
 
   useEffect(() => {
+    if (room) recordVisit(room.id);
+  }, [room]);
+
+  useEffect(() => {
     if (!room || !myPublicId || !connected) return;
     const mine = (p: { roomId: string }) => p.roomId === roomId;
 
@@ -81,6 +86,11 @@ function Room({ roomId }: { roomId: string }) {
     const onMessage = (m: ChatMessage) => mine(m) && setMessages((prev) => [...prev.slice(-199), m]);
     const onBoardHistory = (p: { roomId: string; strokes: Stroke[] }) => mine(p) && setShared(p.strokes);
     const onStroke = (p: { roomId: string; stroke: Stroke }) => mine(p) && setShared((prev) => [...prev, p.stroke]);
+    const onUpdated = (p: { roomId: string; strokes: Stroke[] }) => {
+      if (!mine(p)) return;
+      const byId = new Map(p.strokes.map((s) => [s.id, s]));
+      setShared((prev) => prev.map((s) => byId.get(s.id) ?? s));
+    };
     const onRemoved = (p: { roomId: string; strokeIds: string[] }) => {
       if (!mine(p)) return;
       const gone = new Set(p.strokeIds);
@@ -94,6 +104,7 @@ function Room({ roomId }: { roomId: string }) {
     socket.on('board:history', onBoardHistory);
     socket.on('board:stroke', onStroke);
     socket.on('board:removed', onRemoved);
+    socket.on('board:updated', onUpdated);
     socket.on('error:message', onError);
     socket.emit('room:join', { roomId });
 
@@ -105,6 +116,7 @@ function Room({ roomId }: { roomId: string }) {
       socket.off('board:history', onBoardHistory);
       socket.off('board:stroke', onStroke);
       socket.off('board:removed', onRemoved);
+      socket.off('board:updated', onUpdated);
       socket.off('error:message', onError);
     };
   }, [room, roomId, myPublicId, connected]);
@@ -129,6 +141,15 @@ function Room({ roomId }: { roomId: string }) {
   const undoPersonal = () => setPersonal((prev) => prev.slice(0, -1));
   const erasePersonal = (ids: string[]) => setPersonal((prev) => prev.filter((s) => !ids.includes(s.id)));
   const eraseShared = (ids: string[]) => socket.emit('board:erase', { roomId, strokeIds: ids });
+  const replaceById = (prev: Stroke[], changed: Stroke[]) => {
+    const byId = new Map(changed.map((s) => [s.id, s]));
+    return prev.map((s) => byId.get(s.id) ?? s);
+  };
+  const updatePersonal = (changed: Stroke[]) => setPersonal((prev) => replaceById(prev, changed));
+  const updateShared = (changed: Stroke[]) => {
+    setShared((prev) => replaceById(prev, changed));
+    socket.emit('board:update', { roomId, strokes: changed });
+  };
 
   const windows: DeskWindow[] = [
     {
@@ -152,6 +173,7 @@ function Room({ roomId }: { roomId: string }) {
           myId={myId}
           onAdd={(s) => setPersonal((prev) => [...prev, ...s])}
           onErase={erasePersonal}
+          onUpdate={updatePersonal}
           onUndo={undoPersonal}
           onClearMine={() => setPersonal([])}
         />
@@ -170,6 +192,7 @@ function Room({ roomId }: { roomId: string }) {
           myId={myId}
           onAdd={addShared}
           onErase={eraseShared}
+          onUpdate={updateShared}
           onUndo={() => socket.emit('board:undo', { roomId })}
           onClearMine={() => socket.emit('board:clear-mine', { roomId })}
           collaborative
