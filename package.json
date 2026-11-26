@@ -13,7 +13,8 @@
     "start": "npm run start -w server",
     "test": "tsx --test shared/*.test.ts",
     "typecheck": "npm run typecheck -w server && npm run typecheck -w client",
-    "fetch:buildings": "node scripts/fetch-campus-buildings.mjs"
+    "fetch:buildings": "node scripts/fetch-campus-buildings.mjs",
+    "fetch:courses": "node scripts/fetch-cpp-courses.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",

@@ -1,8 +1,8 @@
 import { BUILDINGS } from '@shared/buildings';
 import { DAY_LABELS, isValidBlock } from '@shared/schedule';
-import { CPP_MAJORS, normalizeCourse, normalizeTag, SUBJECT_SUGGESTIONS, tagKey } from '@shared/tags';
+import { CPP_MAJORS, INTEREST_SUGGESTIONS, normalizeCourse, normalizeTag, SUBJECT_SUGGESTIONS, tagKey } from '@shared/tags';
 import { DAYS, LOOKING_FOR, type CourseEntry, type LookingFor, type ScheduleBlock, type TagStats, type UserProfile } from '@shared/types';
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import TagInput from '../components/TagInput';
 import { api } from '../lib/api';
 import { LOOKING_LABELS } from '../lib/labels';
@@ -23,78 +23,78 @@ const EMPTY: UserProfile = {
   needHelpSubjects: [],
   coursesTaken: [],
   coursesNeedHelp: [],
+  interests: [],
 };
 
 const toCounts = (pairs: [string, number][] = []) => new Map(pairs.map(([label, n]) => [tagKey(label), n]));
 
-/** Courses with an optional professor (helps match people who had the same class/professor). */
+/** CPP course catalog ([code, title]) from client/public/cpp-courses.json (npm run fetch:courses). */
+function useCppCourses() {
+  const [courses, setCourses] = useState<Map<string, string>>(new Map());
+  useEffect(() => {
+    fetch('/cpp-courses.json')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list: [string, string][]) => setCourses(new Map(list)))
+      .catch(() => {});
+  }, []);
+  return courses;
+}
+
+/** Pick courses from CPP's catalog (or type your own), then optionally note the professor for each. */
 function CourseList({
   label,
   value,
   onChange,
   counts,
   popular,
+  catalog,
 }: {
   label: string;
   value: CourseEntry[];
   onChange: (v: CourseEntry[]) => void;
   counts: Map<string, number>;
   popular: string[];
+  catalog: Map<string, string>;
 }) {
-  const [course, setCourse] = useState('');
-  const [professor, setProfessor] = useState('');
-  const listId = `courses-${label.replace(/\W+/g, '-')}`;
-
-  const add = () => {
-    const c = normalizeCourse(course);
-    if (!c || value.some((v) => tagKey(v.course) === tagKey(c)) || value.length >= 30) return;
-    onChange([...value, { course: c, ...(professor.trim() ? { professor: professor.trim().slice(0, 40) } : {}) }]);
-    setCourse('');
-    setProfessor('');
-  };
+  const codes = useMemo(() => [...catalog.keys()], [catalog]);
+  const describe = useCallback((code: string) => catalog.get(code), [catalog]);
+  const setCodes = (list: string[]) =>
+    onChange(list.map((course) => value.find((v) => tagKey(v.course) === tagKey(course)) ?? { course }));
+  const setProfessor = (course: string, professor: string) =>
+    onChange(value.map((v) => (v.course === course ? { course, ...(professor ? { professor: professor.slice(0, 40) } : {}) } : v)));
 
   return (
-    <div className="tag-input">
-      <span className="tag-label">{label}</span>
-      <div className="tag-box static">
-        {value.length === 0 && <span className="hint">None yet.</span>}
-        {value.map((c) => (
-          <span key={c.course} className="tag" title={`${counts.get(tagKey(c.course)) ?? 0} others list this course`}>
-            {c.course}
-            {c.professor && <em> · {c.professor}</em>} <small>· {counts.get(tagKey(c.course)) ?? 0}</small>
-            <button type="button" aria-label={`Remove ${c.course}`} onClick={() => onChange(value.filter((v) => v !== c))}>
-              ×
-            </button>
-          </span>
-        ))}
-      </div>
-      <div className="row course-add">
-        <input
-          list={listId}
-          value={course}
-          onChange={(e) => setCourse(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), add())}
-          placeholder="Course, e.g. CS 3310"
-          aria-label={`${label}: course`}
-        />
-        <datalist id={listId}>
-          {popular.map((c) => (
-            <option key={c} value={c}>
-              {counts.get(tagKey(c)) ?? 0} others
-            </option>
+    <div className="course-list">
+      <TagInput
+        label={label}
+        value={value.map((v) => v.course)}
+        onChange={setCodes}
+        options={codes}
+        popular={popular}
+        counts={counts}
+        normalize={normalizeCourse}
+        describe={describe}
+        max={30}
+        placeholder={codes.length ? 'Type a course code or name, e.g. CS 3310 or algorithms' : 'e.g. CS 3310'}
+      />
+      {value.length > 0 && (
+        <div className="professors">
+          {value.map((c) => (
+            <label key={c.course} className="professor-row">
+              <span>
+                {c.course}
+                {catalog.get(c.course) && <em> · {catalog.get(c.course)}</em>}
+              </span>
+              <input
+                value={c.professor ?? ''}
+                onChange={(e) => setProfessor(c.course, e.target.value)}
+                placeholder="Professor (optional)"
+                aria-label={`Professor for ${c.course}`}
+              />
+            </label>
           ))}
-        </datalist>
-        <input
-          value={professor}
-          onChange={(e) => setProfessor(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), add())}
-          placeholder="Professor (optional)"
-          aria-label={`${label}: professor`}
-        />
-        <button type="button" onClick={add} disabled={!course.trim()}>
-          Add
-        </button>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -113,10 +113,16 @@ export default function ProfilePage() {
   useEffect(loadStats, []);
 
   const counts = useMemo(
-    () => ({ majors: toCounts(stats?.majors), subjects: toCounts(stats?.subjects), courses: toCounts(stats?.courses) }),
+    () => ({
+      majors: toCounts(stats?.majors),
+      subjects: toCounts(stats?.subjects),
+      courses: toCounts(stats?.courses),
+      interests: toCounts(stats?.interests),
+    }),
     [stats],
   );
   const popular = (pairs: [string, number][] = []) => pairs.slice(0, 40).map(([label]) => label);
+  const catalog = useCppCourses();
 
   useEffect(() => {
     api
@@ -239,6 +245,7 @@ export default function ProfilePage() {
           onChange={(v) => set('coursesTaken', v)}
           counts={counts.courses}
           popular={popular(stats?.courses)}
+          catalog={catalog}
         />
         <CourseList
           label="Courses I want help with"
@@ -246,6 +253,7 @@ export default function ProfilePage() {
           onChange={(v) => set('coursesNeedHelp', v)}
           counts={counts.courses}
           popular={popular(stats?.courses)}
+          catalog={catalog}
         />
       </fieldset>
 
@@ -295,6 +303,22 @@ export default function ProfilePage() {
         <button type="button" onClick={addBlock}>
           + Add a time block
         </button>
+      </fieldset>
+
+      <fieldset>
+        <legend>Personal interests</legend>
+        <p className="hint">Hobbies and things you're into, so people can find friends with things in common. Not used for tutoring.</p>
+        <TagInput
+          label="Interests"
+          value={profile.interests}
+          onChange={(v) => set('interests', v)}
+          options={INTEREST_SUGGESTIONS}
+          popular={popular(stats?.interests)}
+          counts={counts.interests}
+          normalize={normalizeTag}
+          max={25}
+          placeholder="e.g. Hiking, Anime, Basketball"
+        />
       </fieldset>
 
       <div className="row">

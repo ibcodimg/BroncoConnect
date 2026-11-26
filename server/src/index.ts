@@ -15,6 +15,7 @@ import { friendsRouter } from './routes/friends';
 import { mapLinksRouter } from './routes/mapLinks';
 import { peopleRouter } from './routes/people';
 import { reportsRouter } from './routes/reports';
+import { suggestionsRouter } from './routes/suggestions';
 import { tagsRouter } from './routes/tags';
 import { tutoringRouter } from './routes/tutoring';
 import { usersRouter } from './routes/users';
@@ -36,6 +37,7 @@ app.use('/api/reports', reportsRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/map-links', mapLinksRouter);
 app.use('/api/tags', tagsRouter);
+app.use('/api/suggestions', suggestionsRouter);
 app.use('/api/tutoring', tutoringRouter);
 
 // In production, serve the built client from the same server.

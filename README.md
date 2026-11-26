@@ -124,5 +124,6 @@ The free plan sleeps after about 15 minutes with no visitors, so the first visit
 | `npm test` | Runs the unit tests (schedule matching) |
 | `npm run typecheck` | Type-checks the server and client |
 | `npm run fetch:buildings` | Downloads campus building outlines from OpenStreetMap |
+| `npm run fetch:courses` | Downloads every course from CPP's catalog into `client/public/cpp-courses.json` (for the course picker). Commit the file afterwards. |
 
 Map data © OpenStreetMap contributors.

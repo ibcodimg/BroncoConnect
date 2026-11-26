@@ -1,12 +1,20 @@
-import { findRoom } from '@shared/buildings';
-import type { BanView, ReportView } from '@shared/types';
+import { ALL_ROOMS, findRoom, roomTag } from '@shared/buildings';
+import type { BanView, ReportView, RoomMessageCount, SuggestionView } from '@shared/types';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { UserName } from '../components/UserCard';
 import { api, type AdminUser } from '../lib/api';
 import { useSession } from '../lib/session';
 
-type Tab = 'reports' | 'users' | 'bans';
+type Tab = 'reports' | 'suggestions' | 'chatrooms' | 'users' | 'bans';
+
+const TAB_LABELS: Record<Tab, string> = {
+  reports: 'Reports',
+  suggestions: 'Suggestions',
+  chatrooms: 'Chatrooms',
+  users: 'Users',
+  bans: 'Active bans',
+};
 
 const DURATIONS: { label: string; hours: number | null }[] = [
   { label: '1 hour', hours: 1 },
@@ -30,13 +38,15 @@ export default function AdminPage() {
     <div className="page admin">
       <h1>🛡 Admin</h1>
       <div className="segmented">
-        {(['reports', 'users', 'bans'] as Tab[]).map((t) => (
+        {(Object.keys(TAB_LABELS) as Tab[]).map((t) => (
           <button key={t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>
-            {t === 'reports' ? 'Reports' : t === 'users' ? 'Users' : 'Active bans'}
+            {TAB_LABELS[t]}
           </button>
         ))}
       </div>
       {tab === 'reports' && <Reports />}
+      {tab === 'suggestions' && <Suggestions />}
+      {tab === 'chatrooms' && <Chatrooms />}
       {tab === 'users' && <Users initialQuery={params.get('user') ?? ''} />}
       {tab === 'bans' && <Bans />}
     </div>
@@ -154,13 +164,20 @@ function Reports() {
         {reports?.map((r) => (
           <li key={r.id}>
             <p>
-              <strong>
-                <UserName publicId={r.target.publicId} name={r.target.displayName} roomId={r.roomId} />
-              </strong>{' '}
-              reported for <strong>{r.reason.replace(/-/g, ' ')}</strong> by{' '}
+              {r.target ? (
+                <>
+                  <strong>
+                    <UserName publicId={r.target.publicId} name={r.target.displayName} roomId={r.roomId} />
+                  </strong>{' '}
+                  reported for <strong>{r.reason.replace(/-/g, ' ')}</strong>
+                </>
+              ) : (
+                <strong>🐞 Problem report</strong>
+              )}{' '}
+              by{' '}
               <UserName publicId={r.reporter.publicId} name={r.reporter.displayName} />
               {r.roomId && <> in {findRoom(r.roomId)?.name ?? r.roomId}</>} · {fmt(r.createdAt)}
-              {r.target.banned && <span className="tag">banned</span>}
+              {r.target?.banned && <span className="tag">banned</span>}
             </p>
             {r.details && <blockquote>{r.details}</blockquote>}
             {r.context.length > 0 && (
@@ -181,9 +198,9 @@ function Reports() {
               ) : (
                 <button onClick={() => act(r.id, 'reopen')}>Reopen</button>
               )}
-              {!r.target.banned && <button onClick={() => setBanning(banning === r.id ? null : r.id)}>Ban…</button>}
+              {r.target && !r.target.banned && <button onClick={() => setBanning(banning === r.id ? null : r.id)}>Ban…</button>}
             </div>
-            {banning === r.id && (
+            {banning === r.id && r.target && (
               <BanForm
                 publicId={r.target.publicId}
                 name={r.target.displayName}
@@ -197,6 +214,105 @@ function Reports() {
           </li>
         ))}
       </ul>
+    </section>
+  );
+}
+
+function Suggestions() {
+  const [status, setStatus] = useState<'open' | 'done'>('open');
+  const [items, setItems] = useState<SuggestionView[] | null>(null);
+  const load = useCallback(() => {
+    api.admin.suggestions(status).then(setItems).catch(() => setItems([]));
+  }, [status]);
+  useEffect(load, [load]);
+
+  return (
+    <section>
+      <div className="row">
+        <label>
+          <input type="radio" checked={status === 'open'} onChange={() => setStatus('open')} /> New
+        </label>
+        <label>
+          <input type="radio" checked={status === 'done'} onChange={() => setStatus('done')} /> Done
+        </label>
+      </div>
+      {items?.length === 0 && <p className="hint">No {status === 'open' ? 'new' : 'finished'} suggestions.</p>}
+      <ul className="report-list">
+        {items?.map((s) => (
+          <li key={s.id}>
+            <p>
+              💡 <UserName publicId={s.author.publicId} name={s.author.displayName} /> · {fmt(s.createdAt)}
+            </p>
+            <blockquote className="prewrap">{s.text}</blockquote>
+            <button
+              onClick={async () => {
+                await api.admin.setSuggestion(s.id, s.status === 'open' ? 'done' : 'reopen');
+                load();
+              }}
+            >
+              {s.status === 'open' ? 'Mark done' : 'Reopen'}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function Chatrooms() {
+  const [counts, setCounts] = useState<RoomMessageCount[] | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const load = useCallback(() => {
+    api.admin.rooms().then(setCounts).catch(() => setCounts([]));
+  }, []);
+  useEffect(load, [load]);
+
+  const purge = async (roomId: string, label: string) => {
+    if (!window.confirm(`Delete every message in ${label}? This can't be undone.`)) return;
+    const { deleted } = await api.admin.purge(roomId);
+    setNotice(`Deleted ${deleted} message${deleted === 1 ? '' : 's'} from ${label}.`);
+    load();
+  };
+
+  const total = counts?.reduce((n, c) => n + c.count, 0) ?? 0;
+  const order = new Map(ALL_ROOMS.map((r, i) => [r.id, i]));
+
+  return (
+    <section>
+      <p className="hint">Purging deletes chat messages for everyone (whiteboards are untouched). You can also delete a single message by hovering it in a chatroom and clicking 🗑.</p>
+      {notice && <p className="ok">{notice}</p>}
+      <div className="row">
+        <strong>{total} messages in {counts?.length ?? 0} chatrooms</strong>
+        <button className="danger" disabled={!total} onClick={() => purge('all', 'ALL chatrooms')}>
+          Purge all chatrooms
+        </button>
+      </div>
+      <table className="users-table">
+        <thead>
+          <tr>
+            <th>Chatroom</th>
+            <th>Messages</th>
+            <th />
+          </tr>
+        </thead>
+        <tbody>
+          {[...(counts ?? [])]
+            .sort((a, b) => (order.get(a.roomId) ?? 999) - (order.get(b.roomId) ?? 999))
+            .map((c) => {
+              const room = findRoom(c.roomId);
+              const label = room ? `${roomTag(room)} · ${room.name}` : c.roomId;
+              return (
+                <tr key={c.roomId}>
+                  <td>{label}</td>
+                  <td>{c.count}</td>
+                  <td>
+                    <button onClick={() => purge(c.roomId, room?.name ?? c.roomId)}>Purge</button>
+                  </td>
+                </tr>
+              );
+            })}
+        </tbody>
+      </table>
     </section>
   );
 }

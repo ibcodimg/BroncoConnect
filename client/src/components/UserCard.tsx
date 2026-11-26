@@ -124,6 +124,16 @@ function UserCardModal({ target, onClose }: { target: Target; onClose: () => voi
                 Wants help with: {[...person.needHelpSubjects, ...person.coursesNeedHelp.map((c) => c.course + (c.professor ? ` (${c.professor})` : ''))].join(', ')}
               </p>
             )}
+            {person.interests.length > 0 && (
+              <div className="interests">
+                <span className="meta">Interests:</span>{' '}
+                {person.interests.map((t) => (
+                  <span key={t} className="tag small">
+                    {t}
+                  </span>
+                ))}
+              </div>
+            )}
 
             {person.isMe ? (
               <p className="hint">This is you.</p>

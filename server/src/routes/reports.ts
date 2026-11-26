@@ -13,9 +13,14 @@ reportsRouter.post('/', async (req, res, next) => {
   try {
     const me = currentUser(res).publicId;
     const { targetId, reason, details, roomId } = req.body ?? {};
-    if (typeof targetId !== 'string' || targetId === me) return res.status(400).json({ error: 'Bad target' });
     if (!REPORT_REASONS.includes(reason as ReportReason)) return res.status(400).json({ error: 'Bad reason' });
-    if (!(await User.exists({ publicId: targetId }))) return res.status(404).json({ error: 'Not found' });
+    // General reports (bugs/problems) have no target but need a description.
+    const general = targetId == null || targetId === '';
+    if (general && !(typeof details === 'string' && details.trim())) return res.status(400).json({ error: 'Please describe the problem' });
+    if (!general) {
+      if (typeof targetId !== 'string' || targetId === me) return res.status(400).json({ error: 'Bad target' });
+      if (!(await User.exists({ publicId: targetId }))) return res.status(404).json({ error: 'Not found' });
+    }
 
     const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
     if ((await Report.countDocuments({ reporterId: me, createdAt: { $gt: hourAgo } })) >= 10) {
@@ -23,14 +28,16 @@ reportsRouter.post('/', async (req, res, next) => {
     }
 
     const room = typeof roomId === 'string' && findRoom(roomId) ? roomId : undefined;
-    const context = await Message.find({ authorId: targetId, ...(room ? { roomId: room } : {}) })
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .lean();
+    const context = general
+      ? []
+      : await Message.find({ authorId: targetId, ...(room ? { roomId: room } : {}) })
+          .sort({ createdAt: -1 })
+          .limit(10)
+          .lean();
 
     await Report.create({
       reporterId: me,
-      targetId,
+      targetId: general ? undefined : targetId,
       reason,
       details: typeof details === 'string' ? details.slice(0, 1000) : undefined,
       roomId: room,

@@ -1,11 +1,14 @@
 import { timingSafeEqual } from 'node:crypto';
 import { Router } from 'express';
-import type { BanView, ReportView } from '../../../shared/types';
+import { findRoom } from '../../../shared/buildings';
+import type { BanView, ReportView, RoomMessageCount, SuggestionView } from '../../../shared/types';
 import { config } from '../config';
 import { currentUser, requireAdmin, requireUser } from '../lib/auth';
 import { findActiveBan } from '../lib/bans';
 import { escapeRegex, toPublicUser } from '../lib/people';
-import { kickBanned } from '../lib/realtime';
+import { emitToRoom, kickBanned } from '../lib/realtime';
+import { Message } from '../models/Message';
+import { Suggestion } from '../models/Suggestion';
 import { Ban } from '../models/Ban';
 import { Report } from '../models/Report';
 import { User } from '../models/User';
@@ -42,16 +45,16 @@ adminRouter.get('/reports', async (req, res, next) => {
   try {
     const status = req.query.status === 'resolved' ? 'resolved' : 'open';
     const reports = await Report.find({ status }).sort({ createdAt: -1 }).limit(200).lean();
-    const ids = [...new Set(reports.flatMap((r) => [r.reporterId, r.targetId]))];
+    const ids = [...new Set(reports.flatMap((r) => [r.reporterId, r.targetId]).filter((id): id is string => !!id))];
     const users = new Map((await User.find({ publicId: { $in: ids } }).lean()).map((u) => [u.publicId, u]));
     const banned = new Set<string>();
-    for (const id of new Set(reports.map((r) => r.targetId))) {
+    for (const id of new Set(reports.map((r) => r.targetId).filter((id): id is string => !!id))) {
       const u = users.get(id);
       if (await findActiveBan({ publicId: id, ip: u?.lastIp ?? undefined })) banned.add(id);
     }
     const unknown = (publicId: string) => ({ publicId, displayName: '(deleted user)', majors: [], lookingFor: [] });
     const result: ReportView[] = reports.map((r) => {
-      const target = users.get(r.targetId);
+      const target = r.targetId ? users.get(r.targetId) : undefined;
       return {
         id: String(r._id),
         reason: r.reason as ReportView['reason'],
@@ -60,11 +63,13 @@ adminRouter.get('/reports', async (req, res, next) => {
         status: r.status as ReportView['status'],
         createdAt: (r.createdAt ?? new Date()).toISOString(),
         reporter: users.get(r.reporterId) ? toPublicUser(users.get(r.reporterId)!) : unknown(r.reporterId),
-        target: {
-          ...(target ? toPublicUser(target) : unknown(r.targetId)),
-          lastIp: target?.lastIp ?? undefined,
-          banned: banned.has(r.targetId),
-        },
+        target: r.targetId
+          ? {
+              ...(target ? toPublicUser(target) : unknown(r.targetId)),
+              lastIp: target?.lastIp ?? undefined,
+              banned: banned.has(r.targetId),
+            }
+          : undefined,
         context: (r.context ?? []).map((c) => ({ text: c.text ?? '', createdAt: (c.createdAt ?? new Date()).toISOString() })),
       };
     });
@@ -78,6 +83,64 @@ adminRouter.post('/reports/:id/:action(resolve|reopen)', async (req, res, next) 
   try {
     await Report.updateOne({ _id: req.params.id }, { $set: { status: req.params.action === 'resolve' ? 'resolved' : 'open' } });
     res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---- Suggestions ----
+
+adminRouter.get('/suggestions', async (req, res, next) => {
+  try {
+    const status = req.query.status === 'done' ? 'done' : 'open';
+    const list = await Suggestion.find({ status }).sort({ createdAt: -1 }).limit(300).lean();
+    const users = new Map((await User.find({ publicId: { $in: list.map((s) => s.authorId) } }).lean()).map((u) => [u.publicId, u]));
+    const result: SuggestionView[] = list.map((s) => ({
+      id: String(s._id),
+      text: s.text,
+      status: s.status as SuggestionView['status'],
+      createdAt: (s.createdAt ?? new Date()).toISOString(),
+      author: users.get(s.authorId) ? toPublicUser(users.get(s.authorId)!) : { publicId: s.authorId, displayName: '(deleted user)', majors: [], lookingFor: [] },
+    }));
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+adminRouter.post('/suggestions/:id/:action(done|reopen)', async (req, res, next) => {
+  try {
+    await Suggestion.updateOne({ _id: req.params.id }, { $set: { status: req.params.action === 'done' ? 'done' : 'open' } });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---- Chatrooms ----
+
+/** Message counts per room (rooms with messages only). */
+adminRouter.get('/rooms', async (_req, res, next) => {
+  try {
+    const counts = await Message.aggregate<{ _id: string; count: number }>([
+      { $group: { _id: '$roomId', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+    ]);
+    const result: RoomMessageCount[] = counts.map((c) => ({ roomId: c._id, count: c.count }));
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** Purge every message in one chatroom, or in all of them (roomId = 'all'). */
+adminRouter.delete('/rooms/:roomId/messages', async (req, res, next) => {
+  try {
+    const { roomId } = req.params;
+    if (roomId !== 'all' && !findRoom(roomId)) return res.status(404).json({ error: 'Unknown room' });
+    const { deletedCount } = await Message.deleteMany(roomId === 'all' ? {} : { roomId });
+    emitToRoom(roomId, 'chat:cleared', { roomId });
+    res.json({ ok: true, deleted: deletedCount });
   } catch (err) {
     next(err);
   }

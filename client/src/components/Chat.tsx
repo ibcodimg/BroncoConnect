@@ -8,9 +8,11 @@ interface Props {
   messages: ChatMessage[];
   myId: string;
   onSend: (text: string) => void;
+  /** Admins get a 🗑 button on each message. */
+  onDelete?: (messageId: string) => void;
 }
 
-export default function Chat({ roomId, messages, myId, onSend }: Props) {
+export default function Chat({ roomId, messages, myId, onSend, onDelete }: Props) {
   const [text, setText] = useState('');
   const list = useRef<HTMLOListElement>(null);
   const { isMuted } = useMutes();
@@ -43,6 +45,11 @@ export default function Chat({ roomId, messages, myId, onSend }: Props) {
             <time dateTime={m.createdAt}>
               {new Date(m.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
             </time>
+            {onDelete && (
+              <button className="msg-delete" title="Delete message (admin)" aria-label="Delete message" onClick={() => onDelete(m.id)}>
+                🗑
+              </button>
+            )}
             <p>{m.text}</p>
           </li>
         ))}

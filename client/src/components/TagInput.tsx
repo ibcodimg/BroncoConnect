@@ -14,6 +14,8 @@ interface Props {
   normalize: (s: string) => string;
   max?: number;
   placeholder?: string;
+  /** Optional subtitle for an option (e.g. a course title); also searchable. */
+  describe?: (label: string) => string | undefined;
 }
 
 const others = (n: number | undefined) => (n ? `${n} other${n === 1 ? '' : 's'}` : 'no one else yet');
@@ -21,7 +23,7 @@ const others = (n: number | undefined) => (n ? `${n} other${n === 1 ? '' : 's'}`
 /**
  * Pick tags from a list, or type your own and press Enter. Each tag shows how many other people use it.
  */
-export default function TagInput({ label, value, onChange, options, counts, popular = [], normalize, max = 20, placeholder }: Props) {
+export default function TagInput({ label, value, onChange, options, counts, popular = [], normalize, max = 20, placeholder, describe }: Props) {
   const [text, setText] = useState('');
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
@@ -36,7 +38,14 @@ export default function TagInput({ label, value, onChange, options, counts, popu
     const pool = new Map<string, string>();
     for (const o of [...options, ...popular]) if (!pool.has(tagKey(o))) pool.set(tagKey(o), o);
     const list = [...pool.entries()]
-      .filter(([k]) => !chosen.has(k) && (!q || k.includes(q)))
+      .filter(
+        ([k, label]) =>
+          !chosen.has(k) &&
+          (!q ||
+            k.includes(q) ||
+            k.replace(/ /g, '').includes(q.replace(/ /g, '')) || // "cs3310" finds "CS 3310"
+            (describe && tagKey(describe(label) ?? '').includes(q))),
+      )
       .sort(([ka], [kb]) => {
         // Prefix matches first, then more popular, then alphabetical.
         const pa = q && ka.startsWith(q) ? 0 : 1;
@@ -46,7 +55,7 @@ export default function TagInput({ label, value, onChange, options, counts, popu
       .slice(0, 8)
       .map(([, label]) => label);
     return list;
-  }, [text, options, popular, counts, value]);
+  }, [text, options, popular, counts, value, describe]);
 
   const typed = normalize(text);
   const typedIsNew = !!tagKey(typed) && !chosen.has(tagKey(typed)) && !suggestions.some((s) => tagKey(s) === tagKey(typed));
@@ -58,6 +67,7 @@ export default function TagInput({ label, value, onChange, options, counts, popu
     onChange([...value, t]);
     setText('');
     setActive(0);
+    setOpen(false); // close so the list doesn't cover the rest of the form; typing reopens it
     inputRef.current?.focus();
   };
   const remove = (t: string) => onChange(value.filter((v) => v !== t));
@@ -87,7 +97,7 @@ export default function TagInput({ label, value, onChange, options, counts, popu
       <span className="tag-label">{label}</span>
       <div className="tag-box" onClick={() => inputRef.current?.focus()}>
         {value.map((t) => (
-          <span key={t} className="tag" title={others(counts.get(tagKey(t)))}>
+          <span key={t} className="tag" title={[describe?.(t), others(counts.get(tagKey(t)))].filter(Boolean).join(' · ')}>
             {t} <small>· {counts.get(tagKey(t)) ?? 0}</small>
             <button type="button" aria-label={`Remove ${t}`} onClick={() => remove(t)}>
               ×
@@ -131,7 +141,10 @@ export default function TagInput({ label, value, onChange, options, counts, popu
                 }}
                 onMouseEnter={() => setActive(i)}
               >
-                <span>{custom ? <>Add “{labelText}”</> : labelText}</span>
+                <span>
+                  {custom ? <>Add “{labelText}”</> : labelText}
+                  {!custom && describe?.(labelText) && <em className="desc"> {describe(labelText)}</em>}
+                </span>
                 <small>{custom ? 'custom tag' : others(counts.get(tagKey(labelText)))}</small>
               </li>
             );

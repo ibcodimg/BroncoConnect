@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
 import { BoardClipboardProvider } from './components/BoardClipboard';
+import HeaderActions from './components/HeaderActions';
 import ProfileNudge from './components/ProfileNudge';
 import RecentRooms from './components/RecentRooms';
 import { UserCardProvider } from './components/UserCard';
@@ -47,6 +48,7 @@ function Header() {
         <NavLink to="/profile">{me?.hasDisplayName ? me.displayName : 'Create Profile'}</NavLink>
         {me?.isAdmin && <NavLink to="/admin">Admin</NavLink>}
       </nav>
+      <HeaderActions />
     </header>
   );
 }

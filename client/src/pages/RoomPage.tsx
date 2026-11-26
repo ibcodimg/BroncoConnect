@@ -86,6 +86,9 @@ function Room({ roomId }: { roomId: string }) {
     const onMessage = (m: ChatMessage) => mine(m) && setMessages((prev) => [...prev.slice(-199), m]);
     const onBoardHistory = (p: { roomId: string; strokes: Stroke[] }) => mine(p) && setShared(p.strokes);
     const onStroke = (p: { roomId: string; stroke: Stroke }) => mine(p) && setShared((prev) => [...prev, p.stroke]);
+    const onMessageRemoved = (p: { roomId: string; messageId: string }) =>
+      mine(p) && setMessages((prev) => prev.filter((m) => m.id !== p.messageId));
+    const onCleared = (p: { roomId: string }) => (p.roomId === 'all' || mine(p)) && setMessages([]);
     const onUpdated = (p: { roomId: string; strokes: Stroke[] }) => {
       if (!mine(p)) return;
       const byId = new Map(p.strokes.map((s) => [s.id, s]));
@@ -105,6 +108,8 @@ function Room({ roomId }: { roomId: string }) {
     socket.on('board:stroke', onStroke);
     socket.on('board:removed', onRemoved);
     socket.on('board:updated', onUpdated);
+    socket.on('chat:removed', onMessageRemoved);
+    socket.on('chat:cleared', onCleared);
     socket.on('error:message', onError);
     socket.emit('room:join', { roomId });
 
@@ -117,6 +122,8 @@ function Room({ roomId }: { roomId: string }) {
       socket.off('board:stroke', onStroke);
       socket.off('board:removed', onRemoved);
       socket.off('board:updated', onUpdated);
+      socket.off('chat:removed', onMessageRemoved);
+      socket.off('chat:cleared', onCleared);
       socket.off('error:message', onError);
     };
   }, [room, roomId, myPublicId, connected]);
@@ -158,7 +165,15 @@ function Room({ roomId }: { roomId: string }) {
       title: '💬 Chat',
       minW: 260,
       minH: 240,
-      children: <Chat roomId={roomId} messages={messages} myId={myId} onSend={(text) => socket.emit('chat:send', { roomId, text })} />,
+      children: (
+        <Chat
+          roomId={roomId}
+          messages={messages}
+          myId={myId}
+          onSend={(text) => socket.emit('chat:send', { roomId, text })}
+          onDelete={me.isAdmin ? (messageId) => socket.emit('chat:delete', { roomId, messageId }) : undefined}
+        />
+      ),
     },
     {
       id: 'personal',

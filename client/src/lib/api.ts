@@ -10,6 +10,8 @@ import type {
   PublicUser,
   ReportReason,
   ReportView,
+  RoomMessageCount,
+  SuggestionView,
   TagStats,
   TutoringResults,
   UserProfile,
@@ -81,8 +83,10 @@ export const api = {
   /** Admin: roomId = a room id, 'none' (not a chatroom), or null (back to automatic matching). */
   setMapLink: (featureId: string, roomId: string | null) => request<{ ok: true }>('/map-links', json('PUT', { featureId, roomId })),
 
-  report: (r: { targetId: string; reason: ReportReason; details?: string; roomId?: string }) =>
+  /** targetId omitted = general report (bug / problem). */
+  report: (r: { targetId?: string; reason: ReportReason; details?: string; roomId?: string }) =>
     request<{ ok: true }>('/reports', json('POST', r)),
+  suggest: (text: string) => request<{ ok: true }>('/suggestions', json('POST', { text })),
 
   admin: {
     claim: (token: string) => request<{ ok: true }>('/admin/claim', json('POST', { token })),
@@ -93,5 +97,9 @@ export const api = {
     ban: (b: { publicId: string; kind: 'user' | 'ip'; hours: number | null; reason?: string }) =>
       request<{ ok: true }>('/admin/bans', json('POST', b)),
     unban: (id: string) => request<{ ok: true }>(`/admin/bans/${id}`, json('DELETE')),
+    suggestions: (status: 'open' | 'done') => request<SuggestionView[]>(`/admin/suggestions?status=${status}`),
+    setSuggestion: (id: string, action: 'done' | 'reopen') => request<{ ok: true }>(`/admin/suggestions/${id}/${action}`, json('POST')),
+    rooms: () => request<RoomMessageCount[]>('/admin/rooms'),
+    purge: (roomId: string) => request<{ ok: true; deleted: number }>(`/admin/rooms/${encodeURIComponent(roomId)}/messages`, json('DELETE')),
   },
 };

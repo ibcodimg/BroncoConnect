@@ -36,6 +36,7 @@ const userSchema = new Schema(
     majors: { type: [{ type: String, maxlength: 40 }], default: [] },
     coursesTaken: { type: [courseSchema], default: [] },
     coursesNeedHelp: { type: [courseSchema], default: [] },
+    interests: { type: [{ type: String, maxlength: 40 }], default: [] },
     status: { type: String, enum: ['commuter', 'resident'] },
     schedule: { type: [scheduleBlockSchema], default: [] },
     lookingFor: { type: [{ type: String, enum: LOOKING_FOR }], default: [] },

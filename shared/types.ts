@@ -41,6 +41,8 @@ export interface UserProfile {
   needHelpSubjects: string[];
   coursesTaken: CourseEntry[];
   coursesNeedHelp: CourseEntry[];
+  /** Personal interests (friend-making only; not used by Tutor4Tutor). */
+  interests: string[];
 }
 
 /** What other users can see about you. Never includes your private anonId. */
@@ -66,6 +68,7 @@ export interface PublicProfile extends PublicUser {
   needHelpSubjects: string[];
   coursesTaken: CourseEntry[];
   coursesNeedHelp: CourseEntry[];
+  interests: string[];
   /** Your relationship to them. */
   friendStatus: FriendStatus;
   isMe: boolean;
@@ -94,7 +97,7 @@ export interface Conversation {
   unread: number;
 }
 
-export const REPORT_REASONS = ['harassment', 'spam', 'inappropriate-drawing', 'inappropriate-message', 'other'] as const;
+export const REPORT_REASONS = ['harassment', 'spam', 'inappropriate-drawing', 'inappropriate-message', 'bug', 'other'] as const;
 export type ReportReason = (typeof REPORT_REASONS)[number];
 
 export interface ReportView {
@@ -105,9 +108,23 @@ export interface ReportView {
   status: 'open' | 'resolved';
   createdAt: string;
   reporter: PublicUser;
-  target: PublicUser & { lastIp?: string; banned: boolean };
+  /** Missing for general reports (bugs / problems not about a person). */
+  target?: PublicUser & { lastIp?: string; banned: boolean };
   /** Target's recent messages in that room when the report was made. */
   context: { text: string; createdAt: string }[];
+}
+
+export interface SuggestionView {
+  id: string;
+  text: string;
+  status: 'open' | 'done';
+  createdAt: string;
+  author: PublicUser;
+}
+
+export interface RoomMessageCount {
+  roomId: string;
+  count: number;
 }
 
 export interface BanView {
@@ -141,6 +158,7 @@ export interface TagStats {
   majors: [string, number][];
   subjects: [string, number][];
   courses: [string, number][];
+  interests: [string, number][];
 }
 
 export interface TutoringMatch extends PublicUser {
@@ -231,6 +249,8 @@ export interface ClientToServerEvents {
   'room:join': (payload: { roomId: string }) => void;
   'room:leave': (payload: { roomId: string }) => void;
   'chat:send': (payload: { roomId: string; text: string }) => void;
+  /** Admin only: delete one message. */
+  'chat:delete': (payload: { roomId: string; messageId: string }) => void;
   'board:stroke': (payload: { roomId: string; stroke: Stroke }) => void;
   'board:undo': (payload: { roomId: string }) => void;
   'board:clear-mine': (payload: { roomId: string }) => void;
@@ -245,6 +265,9 @@ export interface ServerToClientEvents {
   'room:presence': (presence: RoomPresence) => void;
   'chat:history': (payload: { roomId: string; messages: ChatMessage[] }) => void;
   'chat:message': (message: ChatMessage) => void;
+  'chat:removed': (payload: { roomId: string; messageId: string }) => void;
+  /** An admin purged a room's messages ('all' = every room). */
+  'chat:cleared': (payload: { roomId: string }) => void;
   'board:history': (payload: { roomId: string; strokes: Stroke[] }) => void;
   'board:stroke': (payload: { roomId: string; stroke: Stroke }) => void;
   'board:removed': (payload: { roomId: string; strokeIds: string[] }) => void;

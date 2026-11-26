@@ -28,6 +28,7 @@ function toProfile(u: {
   needHelpSubjects: unknown;
   coursesTaken?: unknown;
   coursesNeedHelp?: unknown;
+  interests?: string[] | null;
 }): UserProfile & { publicId?: string } {
   return {
     displayName: u.displayName ?? undefined,
@@ -39,6 +40,7 @@ function toProfile(u: {
     needHelpSubjects: u.needHelpSubjects as string[],
     coursesTaken: courses(u.coursesTaken),
     coursesNeedHelp: courses(u.coursesNeedHelp),
+    interests: u.interests ?? [],
   };
 }
 
@@ -86,6 +88,7 @@ function sanitize(body: Record<string, unknown>): UserProfile {
     needHelpSubjects: uniqueTags(strList(body.needHelpSubjects, 40)),
     coursesTaken: courseList(body.coursesTaken),
     coursesNeedHelp: courseList(body.coursesNeedHelp),
+    interests: uniqueTags(strList(body.interests, 40), undefined, 25),
   };
 }
 

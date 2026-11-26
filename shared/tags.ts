@@ -62,61 +62,62 @@ export const CPP_MAJORS = [
   'Undeclared',
 ] as const;
 
-/** Common subjects students ask for or offer help in. Anyone can add their own. */
+/** Subjects students ask for or offer help in: broad areas first, then common course names. Anyone can add their own. */
 export const SUBJECT_SUGGESTIONS = [
-  'Pre-Calculus',
-  'Calculus I',
-  'Calculus II',
-  'Calculus III',
-  'Differential Equations',
-  'Linear Algebra',
-  'Discrete Math',
-  'Statistics',
-  'Probability',
-  'Physics (Mechanics)',
-  'Physics (Electricity & Magnetism)',
-  'General Chemistry',
-  'Organic Chemistry',
-  'Biochemistry',
-  'General Biology',
-  'Anatomy & Physiology',
-  'Microbiology',
-  'Genetics',
-  'Intro to Programming',
-  'Java',
-  'Python',
-  'C / C++',
-  'JavaScript',
-  'Data Structures',
-  'Algorithms',
-  'Computer Architecture',
-  'Operating Systems',
-  'Databases / SQL',
-  'Web Development',
-  'Circuits',
-  'Statics',
-  'Dynamics',
-  'Thermodynamics',
-  'Fluid Mechanics',
-  'Strength of Materials',
-  'CAD / SolidWorks',
-  'MATLAB',
-  'Excel',
-  'Financial Accounting',
-  'Managerial Accounting',
-  'Microeconomics',
-  'Macroeconomics',
-  'Finance',
-  'Marketing',
-  'Writing / Essays',
-  'Public Speaking',
-  'Research Papers',
-  'Spanish',
-  'Psychology',
-  'History',
-  'Philosophy',
-  'Music Theory',
-  'Drawing / Design',
+  // Broad subjects
+  'Math', 'English', 'Science', 'Writing', 'Reading', 'History', 'Art', 'Music', 'Biology', 'Chemistry', 'Physics',
+  'Computer Science', 'Programming', 'Engineering', 'Business', 'Economics', 'Accounting', 'Finance', 'Marketing',
+  'Management', 'Psychology', 'Sociology', 'Philosophy', 'Political Science', 'Anthropology', 'Geography', 'Geology',
+  'Communication', 'Languages', 'Spanish', 'French', 'Japanese', 'Chinese (Mandarin)', 'Korean', 'German',
+  'American Sign Language', 'Statistics', 'Nutrition', 'Kinesiology', 'Agriculture', 'Architecture', 'Design',
+  'Hospitality', 'Education', 'Health Science', 'Ethnic Studies', 'Environmental Science',
+  // Math
+  'Pre-Algebra', 'Algebra', 'College Algebra', 'Geometry', 'Trigonometry', 'Pre-Calculus', 'Calculus', 'Calculus I',
+  'Calculus II', 'Calculus III', 'Multivariable Calculus', 'Differential Equations', 'Linear Algebra', 'Discrete Math',
+  'Probability', 'Intro to Statistics', 'Applied Statistics', 'Number Theory', 'Abstract Algebra', 'Real Analysis',
+  'Numerical Methods', 'Proofs',
+  // Sciences
+  'General Chemistry', 'Organic Chemistry', 'Biochemistry', 'Analytical Chemistry', 'Physical Chemistry',
+  'General Biology', 'Cell Biology', 'Molecular Biology', 'Genetics', 'Microbiology', 'Ecology', 'Evolution',
+  'Zoology', 'Botany', 'Anatomy & Physiology', 'Human Anatomy', 'Physiology', 'Immunology', 'Neuroscience',
+  'Physics (Mechanics)', 'Physics (Electricity & Magnetism)', 'Physics (Waves & Optics)', 'Modern Physics',
+  'Astronomy', 'Earth Science', 'Oceanography', 'Environmental Biology', 'Animal Science', 'Plant Science',
+  'Food Science', 'Soil Science',
+  // Computing
+  'Intro to Programming', 'Java', 'Python', 'C', 'C++', 'C#', 'JavaScript', 'TypeScript', 'HTML & CSS', 'React',
+  'SQL', 'Databases', 'Data Structures', 'Algorithms', 'Object-Oriented Programming', 'Computer Architecture',
+  'Operating Systems', 'Computer Networks', 'Cybersecurity', 'Software Engineering', 'Web Development',
+  'Mobile App Development', 'Machine Learning', 'Artificial Intelligence', 'Data Science', 'Theory of Computation',
+  'Compilers', 'Assembly / MIPS', 'Digital Logic', 'Linux / Command Line', 'Git', 'Game Development',
+  'Computer Graphics', 'Excel', 'MATLAB', 'R',
+  // Engineering
+  'Engineering Graphics', 'CAD / SolidWorks', 'AutoCAD', 'Statics', 'Dynamics', 'Strength of Materials',
+  'Thermodynamics', 'Heat Transfer', 'Fluid Mechanics', 'Circuits', 'Electronics', 'Signals & Systems',
+  'Control Systems', 'Microcontrollers / Arduino', 'Materials Science', 'Manufacturing Processes', 'Surveying',
+  'Structural Analysis', 'Engineering Economics', 'Aerodynamics',
+  // Business & social sciences
+  'Financial Accounting', 'Managerial Accounting', 'Microeconomics', 'Macroeconomics', 'Business Law',
+  'Business Statistics', 'Operations Management', 'Supply Chain', 'Entrepreneurship', 'Personal Finance',
+  'Investments', 'Intro to Psychology', 'Abnormal Psychology', 'Developmental Psychology', 'Research Methods',
+  'Intro to Sociology', 'Criminology', 'US History', 'World History', 'American Government',
+  // Writing & humanities
+  'English Composition', 'Essay Writing', 'Research Papers', 'Creative Writing', 'Grammar', 'Literature',
+  'Critical Thinking', 'Public Speaking', 'Rhetoric', 'Ethics', 'Logic', 'Art History', 'Music Theory', 'Drawing',
+  'Graphic Design', 'Photography', 'Theatre',
+  // Study skills
+  'Study Skills', 'Time Management', 'Test Prep', 'Resume & Interviews',
+] as const;
+
+/** Personal interests (for making friends; not used by Tutor4Tutor). */
+export const INTEREST_SUGGESTIONS = [
+  'Gaming', 'Video Games', 'Board Games', 'Chess', 'Anime', 'Manga', 'K-Pop', 'Music', 'Concerts', 'Guitar', 'Piano',
+  'Singing', 'Dancing', 'Movies', 'TV Shows', 'Reading', 'Writing', 'Poetry', 'Drawing', 'Painting', 'Photography',
+  'Film Making', 'Fashion', 'Thrifting', 'Cooking', 'Baking', 'Coffee', 'Boba', 'Food', 'Traveling', 'Hiking',
+  'Camping', 'Beach', 'Running', 'Gym', 'Weightlifting', 'Yoga', 'Basketball', 'Soccer', 'Volleyball', 'Tennis',
+  'Badminton', 'Baseball', 'Football', 'Swimming', 'Skateboarding', 'Cycling', 'Rock Climbing', 'Martial Arts',
+  'Esports', 'Coding', 'Hackathons', 'Robotics', 'Cars', 'Tech', 'Startups', 'Investing', 'Volunteering',
+  'Religion / Faith', 'Clubs', 'Greek Life', 'Pets', 'Dogs', 'Cats', 'Plants', 'Gardening', 'Horses',
+  'Sustainability', 'Languages', 'Memes', 'Podcasts', 'Theater', 'Comedy',
 ] as const;
 
 const MAX_TAG = 40;
@@ -124,7 +125,7 @@ const MAX_TAG = 40;
 /** Comparison key: case/space-insensitive. */
 export const tagKey = (s: string) => s.trim().replace(/\s+/g, ' ').toLowerCase();
 
-const canonical = new Map<string, string>([...CPP_MAJORS, ...SUBJECT_SUGGESTIONS].map((t) => [tagKey(t), t]));
+const canonical = new Map<string, string>([...CPP_MAJORS, ...SUBJECT_SUGGESTIONS, ...INTEREST_SUGGESTIONS].map((t) => [tagKey(t), t]));
 
 /** Clean up a tag; known tags get their official spelling ("computer science" → "Computer Science"). */
 export function normalizeTag(raw: string): string {

@@ -163,6 +163,13 @@ export function registerSockets(io: IO) {
       }
     });
 
+    socket.on('chat:delete', async ({ roomId, messageId }) => {
+      const me = requireMe();
+      if (!me?.isAdmin || typeof messageId !== 'string' || !/^[a-f0-9]{24}$/.test(messageId)) return;
+      const { deletedCount } = await Message.deleteOne({ _id: messageId, roomId });
+      if (deletedCount) io.to(roomId).emit('chat:removed', { roomId, messageId });
+    });
+
     socket.on('board:stroke', async ({ roomId, stroke }) => {
       const me = requireMe();
       if (!me || !inRoom(roomId) || !validStroke(stroke)) return;

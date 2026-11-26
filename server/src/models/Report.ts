@@ -4,7 +4,7 @@ import { REPORT_REASONS } from '../../../shared/types';
 const reportSchema = new Schema(
   {
     reporterId: { type: String, required: true }, // publicId
-    targetId: { type: String, required: true }, // publicId
+    targetId: { type: String }, // publicId; empty for general (bug/problem) reports
     reason: { type: String, enum: REPORT_REASONS, required: true },
     details: { type: String, maxlength: 1000 },
     roomId: { type: String },
