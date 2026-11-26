@@ -297,6 +297,7 @@ function Overview() {
 
 const AUDIT_LABELS: Record<AuditType, string> = {
   'chat-message': '💬 Message sent',
+  'chat-edited': '✏️ Message edited',
   'chat-deleted': '🗑 Message deleted',
   'chat-purged': '🧹 Chatroom purged',
   report: '⚑ Report sent',

@@ -6,6 +6,9 @@ const messageSchema = new Schema(
     authorId: { type: String, required: true }, // publicId
     authorName: { type: String, required: true },
     text: { type: String, required: true, maxlength: 1000 },
+    editedAt: { type: Date },
+    /** Earlier versions (oldest first), so anyone can see what was changed. */
+    edits: { type: [{ text: String, editedAt: Date, _id: false }], default: [] },
   },
   { timestamps: { createdAt: true, updatedAt: false } },
 );

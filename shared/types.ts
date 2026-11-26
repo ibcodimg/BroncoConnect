@@ -131,6 +131,7 @@ export interface ReportView {
 
 export const AUDIT_TYPES = [
   'chat-message',
+  'chat-edited',
   'chat-deleted',
   'chat-purged',
   'report',
@@ -269,6 +270,10 @@ export interface ChatMessage {
   author: { publicId: string; displayName: string };
   text: string;
   createdAt: string;
+  /** Set when the author edited the message. */
+  editedAt?: string;
+  /** Earlier versions, oldest first (anyone can view them). */
+  edits?: { text: string; editedAt: string }[];
 }
 
 export interface Point {
@@ -308,8 +313,10 @@ export interface ClientToServerEvents {
   'room:join': (payload: { roomId: string }) => void;
   'room:leave': (payload: { roomId: string }) => void;
   'chat:send': (payload: { roomId: string; text: string }) => void;
-  /** Admin only: delete one message. */
+  /** Delete a message: your own, or any message if you're an admin. */
   'chat:delete': (payload: { roomId: string; messageId: string }) => void;
+  /** Edit your own message. The previous text is kept as an earlier version. */
+  'chat:edit': (payload: { roomId: string; messageId: string; text: string }) => void;
   'board:stroke': (payload: { roomId: string; stroke: Stroke }) => void;
   'board:undo': (payload: { roomId: string }) => void;
   'board:clear-mine': (payload: { roomId: string }) => void;
@@ -325,6 +332,7 @@ export interface ServerToClientEvents {
   'chat:history': (payload: { roomId: string; messages: ChatMessage[] }) => void;
   'chat:message': (message: ChatMessage) => void;
   'chat:removed': (payload: { roomId: string; messageId: string }) => void;
+  'chat:edited': (message: ChatMessage) => void;
   /** An admin purged a room's messages ('all' = every room). */
   'chat:cleared': (payload: { roomId: string }) => void;
   'board:history': (payload: { roomId: string; strokes: Stroke[] }) => void;

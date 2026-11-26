@@ -35,15 +35,33 @@ const CHAT_HISTORY = 50;
 const BOARD_HISTORY = 2000;
 const TOOLS = new Set(['pen', 'line', 'rect', 'ellipse']);
 
-function toChat(doc: { _id: unknown; roomId: string; authorId: string; authorName: string; text: string; createdAt?: Date }): ChatMessage {
+function toChat(doc: {
+  _id: unknown;
+  roomId: string;
+  authorId: string;
+  authorName: string;
+  text: string;
+  createdAt?: Date;
+  editedAt?: Date | null;
+  edits?: { text?: string | null; editedAt?: Date | null }[] | null;
+}): ChatMessage {
   return {
     id: String(doc._id),
     roomId: doc.roomId,
     author: { publicId: doc.authorId, displayName: doc.authorName },
     text: doc.text,
     createdAt: (doc.createdAt ?? new Date()).toISOString(),
+    ...(doc.editedAt
+      ? {
+          editedAt: doc.editedAt.toISOString(),
+          edits: (doc.edits ?? []).map((e) => ({ text: e.text ?? '', editedAt: (e.editedAt ?? doc.createdAt ?? new Date()).toISOString() })),
+        }
+      : {}),
   };
 }
+
+const MESSAGE_ID = /^[a-f0-9]{24}$/;
+const MAX_VERSIONS = 20;
 
 function validStroke(s: Stroke): boolean {
   return (
@@ -165,14 +183,42 @@ export function registerSockets(io: IO) {
       }
     });
 
+    /** Authors can delete their own messages; admins can delete any. */
     socket.on('chat:delete', async ({ roomId, messageId }) => {
       const me = requireMe();
-      if (!me?.isAdmin || typeof messageId !== 'string' || !/^[a-f0-9]{24}$/.test(messageId)) return;
-      const msg = await Message.findOneAndDelete({ _id: messageId, roomId }).lean();
-      if (msg) {
-        io.to(roomId).emit('chat:removed', { roomId, messageId });
-        audit('chat-deleted', { actor: me, target: { publicId: msg.authorId, displayName: msg.authorName }, roomId, detail: msg.text });
-      }
+      if (!me || typeof messageId !== 'string' || !MESSAGE_ID.test(messageId)) return;
+      const msg = await Message.findOneAndDelete({ _id: messageId, roomId, ...(me.isAdmin ? {} : { authorId: me.publicId }) }).lean();
+      if (!msg) return;
+      io.to(roomId).emit('chat:removed', { roomId, messageId });
+      const self = msg.authorId === me.publicId;
+      audit('chat-deleted', {
+        actor: me,
+        target: self ? undefined : { publicId: msg.authorId, displayName: msg.authorName },
+        roomId,
+        detail: `${self ? 'deleted own message' : 'deleted by admin'}: ${msg.text}`,
+      });
+    });
+
+    /** Authors can edit their own messages. Every earlier version is kept and visible to everyone. */
+    socket.on('chat:edit', async ({ roomId, messageId, text }) => {
+      const me = requireMe();
+      if (!me || typeof messageId !== 'string' || !MESSAGE_ID.test(messageId) || typeof text !== 'string') return;
+      const clean = text.trim().slice(0, 1000);
+      if (!clean) return;
+      const now = Date.now();
+      if (now - socket.data.lastChatAt < 400) return socket.emit('error:message', 'Slow down a little.');
+      socket.data.lastChatAt = now;
+
+      const msg = await Message.findOne({ _id: messageId, roomId, authorId: me.publicId });
+      if (!msg || msg.text === clean) return;
+      if ((msg.edits?.length ?? 0) >= MAX_VERSIONS) return socket.emit('error:message', 'This message has been edited too many times.');
+      const previous = msg.text;
+      msg.edits.push({ text: previous, editedAt: msg.editedAt ?? msg.createdAt });
+      msg.text = clean;
+      msg.editedAt = new Date();
+      await msg.save();
+      io.to(roomId).emit('chat:edited', toChat(msg.toObject()));
+      audit('chat-edited', { actor: me, roomId, detail: `“${previous}” → “${clean}”` });
     });
 
     socket.on('board:stroke', async ({ roomId, stroke }) => {
