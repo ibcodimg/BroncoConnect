@@ -24,6 +24,7 @@ export function markOffline(publicId: string, socketId: string) {
 }
 
 export const isOnline = (publicId: string) => online.has(publicId);
+export const onlineCount = () => online.size;
 
 /** Broadcast to everyone in a room, or to everyone connected when roomId is 'all'. */
 export function emitToRoom<E extends keyof ServerToClientEvents>(roomId: string, event: E, ...args: Parameters<ServerToClientEvents[E]>) {

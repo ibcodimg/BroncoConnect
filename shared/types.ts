@@ -100,9 +100,24 @@ export interface Conversation {
 export const REPORT_REASONS = ['harassment', 'spam', 'inappropriate-drawing', 'inappropriate-message', 'bug', 'other'] as const;
 export type ReportReason = (typeof REPORT_REASONS)[number];
 
+/** A message line saved with a report (the reported one is flagged). */
+export interface ReportContextLine {
+  authorId: string;
+  authorName: string;
+  text: string;
+  createdAt: string;
+  reported?: boolean;
+}
+
 export interface ReportView {
   id: string;
   reason: ReportReason;
+  /** When a specific message was reported: where it was. */
+  messageKind?: 'chat' | 'dm';
+  /** The reported message with up to 5 messages before and after it (snapshot at report time). */
+  surrounding: ReportContextLine[];
+  /** The reported person's recent drawings at report time, grouped by room. */
+  drawings: { roomId: string; strokes: Stroke[] }[];
   details?: string;
   roomId?: string;
   status: 'open' | 'resolved';
@@ -112,6 +127,50 @@ export interface ReportView {
   target?: PublicUser & { lastIp?: string; banned: boolean };
   /** Target's recent messages in that room when the report was made. */
   context: { text: string; createdAt: string }[];
+}
+
+export const AUDIT_TYPES = [
+  'chat-message',
+  'chat-deleted',
+  'chat-purged',
+  'report',
+  'report-resolved',
+  'suggestion',
+  'friend-request',
+  'friend-accept',
+  'friend-remove',
+  'name-change',
+  'ban',
+  'unban',
+] as const;
+export type AuditType = (typeof AUDIT_TYPES)[number];
+
+/** Admin audit log entry. Private messages are never logged. */
+export interface AuditView {
+  id: string;
+  type: AuditType;
+  createdAt: string;
+  actor?: { publicId: string; displayName: string };
+  target?: { publicId: string; displayName: string };
+  roomId?: string;
+  /** Short description or the chat text (trimmed). */
+  detail?: string;
+}
+
+export interface AdminStats {
+  users: number;
+  usersWithName: number;
+  activeToday: number;
+  activeThisWeek: number;
+  onlineNow: number;
+  chatMessages: number;
+  /** Count only — admins can't read private messages. */
+  directMessages: number;
+  friendships: number;
+  openReports: number;
+  openSuggestions: number;
+  activeBans: number;
+  topRooms: { roomId: string; count: number }[];
 }
 
 export interface SuggestionView {

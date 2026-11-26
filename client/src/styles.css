@@ -376,3 +376,27 @@ input, select { font: inherit; padding: 0.35rem 0.5rem; border: 1px solid var(--
 .professor-row em { color: var(--muted); font-style: normal; }
 .professor-row input { width: 220px !important; display: inline-block !important; margin: 0 !important; }
 @media (max-width: 1100px) { .header-actions button { font-size: 0.85rem; padding: 0.2rem 0.4rem; } }
+
+/* ---- Message actions, reports context, admin overview + audit ---- */
+.messages li { cursor: pointer; border-radius: 6px; }
+.messages li.selected { background: #f3f7f4; }
+.msg-actions { display: flex; gap: 0.8rem; align-items: center; margin-top: 0.25rem; font-size: 0.85rem; }
+.danger-link { color: #b3261e !important; }
+.reported-quote { margin: 0; padding: 0.5rem 0.75rem; border-left: 3px solid #b3261e; background: #fdf1f0; border-radius: 6px; }
+.report-context ol { list-style: none; padding: 0; margin: 0.3rem 0; font-size: 0.9rem; }
+.report-context li { padding: 0.15rem 0.4rem; border-radius: 4px; }
+.report-context li.reported { background: #fdf1f0; border-left: 3px solid #b3261e; }
+.report-context time { color: var(--muted); margin-right: 0.3rem; }
+.drawing-previews { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.5rem; }
+.drawing-previews figure { margin: 0; }
+.drawing-previews figcaption { font-size: 0.8rem; color: var(--muted); }
+.stroke-preview { border: 1px solid var(--line); border-radius: 6px; background: white; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.75rem; margin-bottom: 1rem; }
+.stat { background: white; border: 1px solid var(--line); border-radius: var(--radius); padding: 0.8rem; display: flex; flex-direction: column; }
+.stat strong { font-size: 1.8rem; color: var(--green); }
+.stat small { color: var(--muted); }
+.audit-filters { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.75rem; }
+.audit-filters .chips { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.audit-filters .chips button { font-size: 0.85rem; padding: 0.2rem 0.55rem; }
+.audit-table td { font-size: 0.9rem; }
+.nowrap { white-space: nowrap; }

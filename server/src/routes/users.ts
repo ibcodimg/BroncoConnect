@@ -4,6 +4,7 @@ import { isValidBlock, scheduleOverlaps } from '../../../shared/schedule';
 import { normalizeCourse, uniqueTags } from '../../../shared/tags';
 import { LOOKING_FOR, type CourseEntry, type Match, type ScheduleBlock, type UserProfile } from '../../../shared/types';
 import { loadUser, requestIp } from '../lib/auth';
+import { audit } from '../lib/audit';
 import { banNotice } from '../lib/bans';
 import { User, displayNameOf, majorsOf } from '../models/User';
 
@@ -116,12 +117,19 @@ usersRouter.get('/:anonId', async (req, res, next) => {
 usersRouter.put('/:anonId', async (req, res, next) => {
   try {
     const profile = sanitize(req.body ?? {});
+    const before = await User.findOne({ anonId: req.params.anonId }, { displayName: 1, publicId: 1 }).lean();
     const user = await User.findOneAndUpdate(
       { anonId: req.params.anonId },
       // Saving replaces the legacy single `major` with the `majors` list.
       { $set: { ...profile, lastSeenAt: new Date() }, $unset: { major: '' }, $setOnInsert: { anonId: req.params.anonId } },
       { upsert: true, new: true, setDefaultsOnInsert: true, runValidators: true },
     );
+    if ((before?.displayName ?? '') !== (profile.displayName ?? '')) {
+      audit('name-change', {
+        actor: { publicId: user.publicId, displayName: displayNameOf(user) },
+        detail: `“${before?.displayName || '(no name)'}” → “${profile.displayName || '(no name)'}”`,
+      });
+    }
     res.json({ ...toProfile(user), publicId: user.publicId });
   } catch (err) {
     next(err);

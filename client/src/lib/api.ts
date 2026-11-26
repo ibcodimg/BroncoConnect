@@ -1,4 +1,6 @@
 import type {
+  AdminStats,
+  AuditView,
   BanNotice,
   BanView,
   BuildingSummary,
@@ -84,7 +86,7 @@ export const api = {
   setMapLink: (featureId: string, roomId: string | null) => request<{ ok: true }>('/map-links', json('PUT', { featureId, roomId })),
 
   /** targetId omitted = general report (bug / problem). */
-  report: (r: { targetId?: string; reason: ReportReason; details?: string; roomId?: string }) =>
+  report: (r: { targetId?: string; reason: ReportReason; details?: string; roomId?: string; message?: { kind: 'chat' | 'dm'; id: string } }) =>
     request<{ ok: true }>('/reports', json('POST', r)),
   suggest: (text: string) => request<{ ok: true }>('/suggestions', json('POST', { text })),
 
@@ -100,6 +102,16 @@ export const api = {
     suggestions: (status: 'open' | 'done') => request<SuggestionView[]>(`/admin/suggestions?status=${status}`),
     setSuggestion: (id: string, action: 'done' | 'reopen') => request<{ ok: true }>(`/admin/suggestions/${id}/${action}`, json('POST')),
     rooms: () => request<RoomMessageCount[]>('/admin/rooms'),
+    stats: () => request<AdminStats>('/admin/stats'),
+    audit: (f: { types?: string[]; user?: string; roomId?: string; q?: string; before?: string }) => {
+      const p = new URLSearchParams();
+      if (f.types?.length) p.set('types', f.types.join(','));
+      if (f.user) p.set('user', f.user);
+      if (f.roomId) p.set('roomId', f.roomId);
+      if (f.q) p.set('q', f.q);
+      if (f.before) p.set('before', f.before);
+      return request<AuditView[]>(`/admin/audit?${p}`);
+    },
     purge: (roomId: string) => request<{ ok: true; deleted: number }>(`/admin/rooms/${encodeURIComponent(roomId)}/messages`, json('DELETE')),
   },
 };

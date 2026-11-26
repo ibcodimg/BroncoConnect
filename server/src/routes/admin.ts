@@ -1,17 +1,21 @@
 import { timingSafeEqual } from 'node:crypto';
 import { Router } from 'express';
 import { findRoom } from '../../../shared/buildings';
-import type { BanView, ReportView, RoomMessageCount, SuggestionView } from '../../../shared/types';
+import { AUDIT_TYPES, type AdminStats, type AuditType, type AuditView, type BanView, type ReportView, type RoomMessageCount, type Stroke, type SuggestionView } from '../../../shared/types';
 import { config } from '../config';
 import { currentUser, requireAdmin, requireUser } from '../lib/auth';
 import { findActiveBan } from '../lib/bans';
 import { escapeRegex, toPublicUser } from '../lib/people';
-import { emitToRoom, kickBanned } from '../lib/realtime';
+import { audit } from '../lib/audit';
+import { emitToRoom, kickBanned, onlineCount } from '../lib/realtime';
+import { AuditEvent } from '../models/AuditEvent';
+import { DirectMessage } from '../models/DirectMessage';
+import { Friendship } from '../models/Friendship';
 import { Message } from '../models/Message';
 import { Suggestion } from '../models/Suggestion';
 import { Ban } from '../models/Ban';
 import { Report } from '../models/Report';
-import { User } from '../models/User';
+import { User, displayNameOf } from '../models/User';
 
 export const adminRouter = Router();
 adminRouter.use(requireUser);
@@ -71,6 +75,15 @@ adminRouter.get('/reports', async (req, res, next) => {
             }
           : undefined,
         context: (r.context ?? []).map((c) => ({ text: c.text ?? '', createdAt: (c.createdAt ?? new Date()).toISOString() })),
+        messageKind: (r.messageKind as ReportView['messageKind']) ?? undefined,
+        surrounding: (r.surrounding ?? []).map((l) => ({
+          authorId: l.authorId ?? '',
+          authorName: l.authorName ?? '',
+          text: l.text ?? '',
+          createdAt: (l.createdAt ?? new Date()).toISOString(),
+          ...(l.reported ? { reported: true } : {}),
+        })),
+        drawings: (Array.isArray(r.drawings) ? r.drawings : []) as { roomId: string; strokes: Stroke[] }[],
       };
     });
     res.json(result);
@@ -81,7 +94,11 @@ adminRouter.get('/reports', async (req, res, next) => {
 
 adminRouter.post('/reports/:id/:action(resolve|reopen)', async (req, res, next) => {
   try {
-    await Report.updateOne({ _id: req.params.id }, { $set: { status: req.params.action === 'resolve' ? 'resolved' : 'open' } });
+    const r = await Report.findByIdAndUpdate(req.params.id, { $set: { status: req.params.action === 'resolve' ? 'resolved' : 'open' } }).lean();
+    if (r && req.params.action === 'resolve') {
+      const admin = currentUser(res);
+      audit('report-resolved', { actor: { publicId: admin.publicId, displayName: displayNameOf(admin) }, detail: `${r.reason} report resolved` });
+    }
     res.json({ ok: true });
   } catch (err) {
     next(err);
@@ -140,7 +157,90 @@ adminRouter.delete('/rooms/:roomId/messages', async (req, res, next) => {
     if (roomId !== 'all' && !findRoom(roomId)) return res.status(404).json({ error: 'Unknown room' });
     const { deletedCount } = await Message.deleteMany(roomId === 'all' ? {} : { roomId });
     emitToRoom(roomId, 'chat:cleared', { roomId });
+    const admin = currentUser(res);
+    audit('chat-purged', {
+      actor: { publicId: admin.publicId, displayName: displayNameOf(admin) },
+      roomId: roomId === 'all' ? undefined : roomId,
+      detail: `${deletedCount} message(s) deleted from ${roomId === 'all' ? 'ALL chatrooms' : roomId}`,
+    });
     res.json({ ok: true, deleted: deletedCount });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---- Audit log ----
+
+/**
+ * Newest first, 100 per page. Query: types=a,b · user=<username or publicId> · roomId · q=<text> · before=<ISO date>
+ * Private messages are never in the log.
+ */
+adminRouter.get('/audit', async (req, res, next) => {
+  try {
+    const filter: Record<string, unknown> = {};
+    const types = String(req.query.types ?? '')
+      .split(',')
+      .filter((t): t is AuditType => (AUDIT_TYPES as readonly string[]).includes(t));
+    if (types.length) filter.type = { $in: types };
+    if (typeof req.query.roomId === 'string' && req.query.roomId) filter.roomId = req.query.roomId;
+    if (typeof req.query.q === 'string' && req.query.q.trim()) filter.detail = { $regex: escapeRegex(req.query.q.trim().slice(0, 60)), $options: 'i' };
+    if (typeof req.query.before === 'string' && !Number.isNaN(Date.parse(req.query.before))) filter.createdAt = { $lt: new Date(req.query.before) };
+    const who = typeof req.query.user === 'string' ? req.query.user.trim().slice(0, 32) : '';
+    if (who) {
+      const ids = (await User.find({ $or: [{ displayName: { $regex: escapeRegex(who), $options: 'i' } }, { publicId: who }] }, { publicId: 1 }).limit(50).lean()).map((u) => u.publicId);
+      filter.$or = [{ actorId: { $in: ids } }, { targetId: { $in: ids } }];
+    }
+    const events = await AuditEvent.find(filter).sort({ createdAt: -1 }).limit(100).lean();
+    const result: AuditView[] = events.map((e) => ({
+      id: String(e._id),
+      type: e.type as AuditType,
+      createdAt: (e.createdAt ?? new Date()).toISOString(),
+      actor: e.actorId ? { publicId: e.actorId, displayName: e.actorName ?? '' } : undefined,
+      target: e.targetId ? { publicId: e.targetId, displayName: e.targetName ?? '' } : undefined,
+      roomId: e.roomId ?? undefined,
+      detail: e.detail ?? undefined,
+    }));
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---- Overview ----
+
+adminRouter.get('/stats', async (_req, res, next) => {
+  try {
+    const day = new Date(Date.now() - 24 * 3600_000);
+    const week = new Date(Date.now() - 7 * 24 * 3600_000);
+    const [users, usersWithName, activeToday, activeThisWeek, chatMessages, directMessages, friendships, openReports, openSuggestions, activeBans, topRooms] =
+      await Promise.all([
+        User.countDocuments(),
+        User.countDocuments({ displayName: { $exists: true, $nin: [null, ''] } }),
+        User.countDocuments({ lastSeenAt: { $gt: day } }),
+        User.countDocuments({ lastSeenAt: { $gt: week } }),
+        Message.countDocuments(),
+        DirectMessage.estimatedDocumentCount(),
+        Friendship.countDocuments({ status: 'accepted' }),
+        Report.countDocuments({ status: 'open' }),
+        Suggestion.countDocuments({ status: 'open' }),
+        Ban.countDocuments({ liftedAt: null, $or: [{ until: null }, { until: { $gt: new Date() } }] }),
+        Message.aggregate<{ _id: string; count: number }>([{ $group: { _id: '$roomId', count: { $sum: 1 } } }, { $sort: { count: -1 } }, { $limit: 5 }]),
+      ]);
+    const stats: AdminStats = {
+      users,
+      usersWithName,
+      activeToday,
+      activeThisWeek,
+      onlineNow: onlineCount(),
+      chatMessages,
+      directMessages,
+      friendships,
+      openReports,
+      openSuggestions,
+      activeBans,
+      topRooms: topRooms.map((r) => ({ roomId: r._id, count: r.count })),
+    };
+    res.json(stats);
   } catch (err) {
     next(err);
   }
@@ -227,6 +327,11 @@ adminRouter.post('/bans', async (req, res, next) => {
       createdBy: admin.publicId,
     });
     kickBanned(ban);
+    audit('ban', {
+      actor: { publicId: admin.publicId, displayName: displayNameOf(admin) },
+      target: { publicId: target.publicId, displayName: displayNameOf(target) },
+      detail: `${kind === 'ip' ? 'IP' : 'user'} ban, ${until ? `until ${until.toISOString()}` : 'permanent'}${typeof reason === 'string' && reason ? ` · ${reason.slice(0, 200)}` : ''}`,
+    });
     res.json({ ok: true, id: String(ban._id) });
   } catch (err) {
     next(err);
@@ -235,7 +340,16 @@ adminRouter.post('/bans', async (req, res, next) => {
 
 adminRouter.delete('/bans/:id', async (req, res, next) => {
   try {
-    await Ban.updateOne({ _id: req.params.id }, { $set: { liftedAt: new Date() } });
+    const ban = await Ban.findByIdAndUpdate(req.params.id, { $set: { liftedAt: new Date() } }).lean();
+    if (ban) {
+      const admin = currentUser(res);
+      const target = ban.kind === 'user' ? await User.findOne({ publicId: ban.value }).lean() : null;
+      audit('unban', {
+        actor: { publicId: admin.publicId, displayName: displayNameOf(admin) },
+        target: target ? { publicId: target.publicId, displayName: displayNameOf(target) } : undefined,
+        detail: ban.kind === 'ip' ? `IP ${ban.value} unbanned` : 'user ban lifted',
+      });
+    }
     res.json({ ok: true });
   } catch (err) {
     next(err);

@@ -1,6 +1,7 @@
 import type { Conversation, DirectMessage, PublicProfile } from '@shared/types';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import ReportMessageDialog, { type ReportableMessage } from '../components/ReportMessageDialog';
 import { UserName } from '../components/UserCard';
 import { api } from '../lib/api';
 import { useMutes } from '../lib/mutes';
@@ -61,6 +62,8 @@ function Thread({ otherId, onSent }: { otherId: string; onSent: () => void }) {
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [reporting, setReporting] = useState<ReportableMessage | null>(null);
   const list = useRef<HTMLOListElement>(null);
 
   useEffect(() => {
@@ -105,15 +108,36 @@ function Thread({ otherId, onSent }: { otherId: string; onSent: () => void }) {
         {hidden && <li className="hint">You've muted this person's messages everywhere. Unmute them from their card to read.</li>}
         {!hidden &&
           messages.map((m) => (
-            <li key={m.id} className={m.from === me?.publicId ? 'mine' : ''}>
+            <li
+              key={m.id}
+              className={`${m.from === me?.publicId ? 'mine' : ''} ${selected === m.id ? 'selected' : ''}`}
+              onClick={(e) => {
+                if ((e.target as HTMLElement).closest('button')) return;
+                if (m.from !== me?.publicId) setSelected((s) => (s === m.id ? null : m.id));
+              }}
+            >
               <time dateTime={m.createdAt}>
                 {new Date(m.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
               </time>
               <p>{m.text}</p>
+              {selected === m.id && (
+                <div className="msg-actions">
+                  <button
+                    className="link"
+                    onClick={() => {
+                      setReporting({ kind: 'dm', id: m.id, authorName: other?.displayName ?? 'Them', text: m.text });
+                      setSelected(null);
+                    }}
+                  >
+                    ⚑ Report message
+                  </button>
+                </div>
+              )}
             </li>
           ))}
       </ol>
       {error && <p className="error">{error}</p>}
+      {reporting && <ReportMessageDialog message={reporting} onClose={() => setReporting(null)} />}
       <form onSubmit={send}>
         <input value={text} onChange={(e) => setText(e.target.value)} maxLength={1000} placeholder="Write a message…" aria-label="Message" />
         <button className="primary" type="submit">

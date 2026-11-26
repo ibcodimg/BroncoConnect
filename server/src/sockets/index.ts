@@ -9,6 +9,7 @@ import {
   type Stroke,
 } from '../../../shared/types';
 import { ANON_ID, ipFrom, loadUser } from '../lib/auth';
+import { audit } from '../lib/audit';
 import { banNotice } from '../lib/bans';
 import { presence } from '../lib/presence';
 import { emitToUser, markOffline, markOnline } from '../lib/realtime';
@@ -158,6 +159,7 @@ export function registerSockets(io: IO) {
       try {
         const doc = await Message.create({ roomId, authorId: me.publicId, authorName: me.displayName, text: clean });
         io.to(roomId).emit('chat:message', toChat(doc));
+        audit('chat-message', { actor: me, roomId, detail: clean });
       } catch (err) {
         console.error('chat:send', err);
       }
@@ -166,8 +168,11 @@ export function registerSockets(io: IO) {
     socket.on('chat:delete', async ({ roomId, messageId }) => {
       const me = requireMe();
       if (!me?.isAdmin || typeof messageId !== 'string' || !/^[a-f0-9]{24}$/.test(messageId)) return;
-      const { deletedCount } = await Message.deleteOne({ _id: messageId, roomId });
-      if (deletedCount) io.to(roomId).emit('chat:removed', { roomId, messageId });
+      const msg = await Message.findOneAndDelete({ _id: messageId, roomId }).lean();
+      if (msg) {
+        io.to(roomId).emit('chat:removed', { roomId, messageId });
+        audit('chat-deleted', { actor: me, target: { publicId: msg.authorId, displayName: msg.authorName }, roomId, detail: msg.text });
+      }
     });
 
     socket.on('board:stroke', async ({ roomId, stroke }) => {

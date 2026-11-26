@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { currentUser, requireUser } from '../lib/auth';
+import { audit } from '../lib/audit';
 import { Suggestion } from '../models/Suggestion';
+import { displayNameOf } from '../models/User';
 
 export const suggestionsRouter = Router();
 suggestionsRouter.use(requireUser);
@@ -15,6 +17,7 @@ suggestionsRouter.post('/', async (req, res, next) => {
       return res.status(429).json({ error: 'Thanks! That’s a lot of suggestions. Try again in a bit.' });
     }
     await Suggestion.create({ authorId: me, text });
+    audit('suggestion', { actor: { publicId: me, displayName: displayNameOf(currentUser(res)) }, detail: text });
     res.json({ ok: true });
   } catch (err) {
     next(err);

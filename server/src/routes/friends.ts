@@ -2,7 +2,9 @@ import { Router } from 'express';
 import type { FriendsList } from '../../../shared/types';
 import { currentUser, requireUser } from '../lib/auth';
 import { toPublicUser } from '../lib/people';
+import { audit } from '../lib/audit';
 import { emitToUser, isOnline } from '../lib/realtime';
+import { displayNameOf } from '../models/User';
 import { Friendship, pairKey } from '../models/Friendship';
 import { User } from '../models/User';
 
@@ -33,18 +35,23 @@ friendsRouter.get('/', async (_req, res, next) => {
 /** Send a friend request, or accept theirs if they already asked you. */
 friendsRouter.post('/:publicId', async (req, res, next) => {
   try {
-    const me = currentUser(res).publicId;
+    const meDoc = currentUser(res);
+    const me = meDoc.publicId;
     const other = req.params.publicId;
     if (other === me) return res.status(400).json({ error: "You can't friend yourself" });
-    if (!(await User.exists({ publicId: other }))) return res.status(404).json({ error: 'Not found' });
+    const otherDoc = await User.findOne({ publicId: other }).lean();
+    if (!otherDoc) return res.status(404).json({ error: 'Not found' });
+    const who = { actor: { publicId: me, displayName: displayNameOf(meDoc) }, target: { publicId: other, displayName: displayNameOf(otherDoc) } };
 
     const pair = pairKey(me, other);
     const existing = await Friendship.findOne({ pair });
     if (!existing) {
       await Friendship.create({ pair, requester: me, recipient: other });
+      audit('friend-request', who);
     } else if (existing.status === 'pending' && existing.recipient === me) {
       existing.status = 'accepted';
       await existing.save();
+      audit('friend-accept', who);
     }
     emitToUser(other, 'friend:update');
     res.json({ ok: true });
@@ -56,8 +63,17 @@ friendsRouter.post('/:publicId', async (req, res, next) => {
 /** Unfriend, cancel your request, or decline theirs. */
 friendsRouter.delete('/:publicId', async (req, res, next) => {
   try {
-    const me = currentUser(res).publicId;
-    await Friendship.deleteOne({ pair: pairKey(me, req.params.publicId) });
+    const meDoc = currentUser(res);
+    const me = meDoc.publicId;
+    const { deletedCount } = await Friendship.deleteOne({ pair: pairKey(me, req.params.publicId) });
+    if (deletedCount) {
+      const otherDoc = await User.findOne({ publicId: req.params.publicId }).lean();
+      audit('friend-remove', {
+        actor: { publicId: me, displayName: displayNameOf(meDoc) },
+        target: { publicId: req.params.publicId, displayName: otherDoc ? displayNameOf(otherDoc) : undefined },
+        detail: 'unfriended, cancelled or declined',
+      });
+    }
     emitToUser(req.params.publicId, 'friend:update');
     res.json({ ok: true });
   } catch (err) {

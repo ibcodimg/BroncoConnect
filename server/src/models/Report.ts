@@ -10,6 +10,16 @@ const reportSchema = new Schema(
     roomId: { type: String },
     /** Snapshot of the target's recent messages in that room, so evidence survives deletion. */
     context: { type: [{ text: String, createdAt: Date, _id: false }], default: [] },
+    /** Set when a specific message was reported. */
+    messageKind: { type: String, enum: ['chat', 'dm'] },
+    messageId: { type: String },
+    /** Reported message + up to 5 before/after (snapshot; DMs only from the reporter's own conversation). */
+    surrounding: {
+      type: [{ authorId: String, authorName: String, text: String, createdAt: Date, reported: Boolean, _id: false }],
+      default: [],
+    },
+    /** Reported person's recent drawings at report time: [{ roomId, strokes }]. */
+    drawings: { type: Schema.Types.Mixed, default: [] },
     status: { type: String, enum: ['open', 'resolved'], default: 'open' },
   },
   { timestamps: true },
