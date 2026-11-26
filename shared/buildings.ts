@@ -75,7 +75,6 @@ const NUMBERED: [string, string][] = [
   ['95', 'Cultural Centers'],
   ['97', 'Campus Center'],
   ['98', 'Classroom/Laboratory/Administration (CLA)'],
-  ['98P', 'CLA Paseo'],
   ['99', 'Storage'],
   ['100', 'Storage'],
   ['111', 'Manor House'],
