@@ -1,5 +1,5 @@
 import { findRoom } from '@shared/buildings';
-import { REPORT_REASONS, type PublicProfile, type ReportReason } from '@shared/types';
+import type { PublicProfile, ReportReason } from '@shared/types';
 import { createContext, useCallback, useContext, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
@@ -39,7 +39,8 @@ export function UserName({ publicId, name, roomId, className }: { publicId: stri
   );
 }
 
-const REASON_LABELS: Record<ReportReason, string> = {
+/** Reasons for reporting a person ('bug' is only for problem reports from the header). */
+const REASON_LABELS: Record<Exclude<ReportReason, 'bug'>, string> = {
   harassment: 'Harassment or bullying',
   spam: 'Spam',
   'inappropriate-drawing': 'Inappropriate drawing',
@@ -251,7 +252,7 @@ function ReportForm({
     <form onSubmit={submit} className="report-form">
       <h2>Report {person.displayName}</h2>
       <p className="hint">Admins will see this report along with their recent messages{roomId ? ' in this room' : ''}.</p>
-      {REPORT_REASONS.map((r) => (
+      {(Object.keys(REASON_LABELS) as (keyof typeof REASON_LABELS)[]).map((r) => (
         <label key={r} className="mute-option">
           <input type="radio" name="reason" checked={reason === r} onChange={() => setReason(r)} /> {REASON_LABELS[r]}
         </label>
