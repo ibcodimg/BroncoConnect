@@ -82,6 +82,7 @@ export function registerSockets(io: IO) {
           major: user.major ?? undefined,
           status: (user.status as 'commuter' | 'resident' | undefined) ?? undefined,
           lookingFor: user.lookingFor as never,
+          hasDisplayName: !!user.displayName?.trim(),
         });
       } catch (err) {
         console.error('session:hello', err);

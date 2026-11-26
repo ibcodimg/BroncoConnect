@@ -70,13 +70,31 @@ input, select { font: inherit; padding: 0.35rem 0.5rem; border: 1px solid var(--
   background: white; padding: 0.5rem 0.75rem; border-radius: var(--radius); box-shadow: 0 2px 8px #0002;
 }
 .building-panel {
-  position: absolute; top: 1rem; right: 1rem; z-index: 600; width: 300px;
+  position: absolute; bottom: 1.5rem; right: 1rem; z-index: 600; width: 300px;
   background: white; border-radius: var(--radius); padding: 1rem; box-shadow: 0 4px 16px #0003;
 }
 .building-panel .close { position: absolute; top: 0.4rem; right: 0.4rem; border: none; font-size: 1.3rem; }
 .building-number { margin: 0; color: var(--muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; }
-.building-panel .stats { list-style: none; padding: 0; margin: 0.6rem 0; }
-.building-panel .features { color: var(--green); }
+.building-card h2 { font-size: 1.15rem; }
+.building-card .stats { list-style: none; padding: 0; margin: 0.6rem 0; }
+.building-card .features { color: var(--green); margin: 0 0 0.6rem; }
+.building-card .button.primary { color: white; } /* beat Leaflet's popup link color */
+.leaflet-popup-content { margin: 14px 16px; font: inherit; }
+.leaflet-interactive { cursor: pointer; }
+
+/* "Pick a username" prompt, top right under the header */
+.nudge {
+  position: fixed; top: 64px; right: 16px; z-index: 1100; width: 300px;
+  background: white; border-left: 4px solid var(--gold); border-radius: var(--radius);
+  padding: 0.8rem 1rem; box-shadow: 0 6px 20px #0003;
+}
+.nudge p { margin: 0 0 0.5rem; }
+.nudge .close { position: absolute; top: 0.3rem; right: 0.3rem; border: none; font-size: 1.2rem; background: none; }
+.quickstart {
+  background: white; border: 1px solid var(--line); border-left: 4px solid var(--gold);
+  border-radius: var(--radius); padding: 1rem; margin: 1rem 0;
+}
+.quickstart input { flex: 1; min-width: 200px; }
 
 /* Room */
 .room-page { padding: 1rem; }
@@ -130,4 +148,5 @@ input, select { font: inherit; padding: 0.35rem 0.5rem; border: 1px solid var(--
   .room-layout { grid-template-columns: 1fr; }
   .chat { height: 50vh; position: static; }
   .building-panel { left: 1rem; width: auto; }
+  .nudge { left: 16px; width: auto; }
 }

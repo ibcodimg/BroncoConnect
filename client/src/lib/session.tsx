@@ -1,10 +1,10 @@
-import type { PublicUser } from '@shared/types';
+import type { Me } from '@shared/types';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { getAnonId } from './identity';
 import { socket } from './socket';
 
 interface SessionValue {
-  me: PublicUser | null;
+  me: Me | null;
   connected: boolean;
   /** Call after the profile changes so chat shows the new display name. */
   refresh: () => void;
@@ -13,7 +13,7 @@ interface SessionValue {
 const SessionContext = createContext<SessionValue>({ me: null, connected: false, refresh: () => {} });
 
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const [me, setMe] = useState<PublicUser | null>(null);
+  const [me, setMe] = useState<Me | null>(null);
   const [connected, setConnected] = useState(false);
 
   const hello = useCallback(() => {

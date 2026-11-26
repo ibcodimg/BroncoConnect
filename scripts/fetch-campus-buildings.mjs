@@ -72,7 +72,14 @@ for (const el of elements) {
   features.push({
     type: 'Feature',
     id: `${el.type}/${el.id}`,
-    properties: { ref: tags.ref ?? null, name: tags.name ?? null },
+    // Several name tags so the app can match a building to its chatroom even when "ref" (the number) is missing.
+    properties: {
+      ref: tags.ref ?? null,
+      name: tags.name ?? null,
+      alt_name: tags.alt_name ?? null,
+      short_name: tags.short_name ?? null,
+      official_name: tags.official_name ?? null,
+    },
     geometry,
   });
 }

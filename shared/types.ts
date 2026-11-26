@@ -40,6 +40,12 @@ export interface PublicUser {
   lookingFor: LookingFor[];
 }
 
+/** You, as the server describes you after `session:hello`. */
+export interface Me extends PublicUser {
+  /** False until you've picked a username (displayName falls back to "Bronco #abcd"). */
+  hasDisplayName: boolean;
+}
+
 export interface Match extends PublicUser {
   overlaps: ScheduleBlock[];
 }
@@ -100,7 +106,7 @@ export interface RoomPresence {
 // ---- Socket.io event contracts ----
 
 export interface ClientToServerEvents {
-  'session:hello': (payload: { anonId: string }, ack: (me: PublicUser) => void) => void;
+  'session:hello': (payload: { anonId: string }, ack: (me: Me) => void) => void;
   'room:join': (payload: { roomId: string }) => void;
   'room:leave': (payload: { roomId: string }) => void;
   'chat:send': (payload: { roomId: string; text: string }) => void;

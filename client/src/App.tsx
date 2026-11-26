@@ -1,5 +1,6 @@
 import { NavLink, Route, Routes } from 'react-router-dom';
 import { BoardClipboardProvider } from './components/BoardClipboard';
+import ProfileNudge from './components/ProfileNudge';
 import { SessionProvider, useSession } from './lib/session';
 import CampusPage from './pages/CampusPage';
 import MatchesPage from './pages/MatchesPage';
@@ -28,6 +29,7 @@ export default function App() {
     <SessionProvider>
       <BoardClipboardProvider>
         <Header />
+        <ProfileNudge />
         <main className="app-main">
           <Routes>
             <Route path="/" element={<CampusPage />} />

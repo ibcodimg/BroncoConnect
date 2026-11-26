@@ -1,6 +1,5 @@
 import type { BuildingSummary } from '@shared/types';
 import { useEffect, useMemo, useState } from 'react';
-import BuildingPanel from '../components/BuildingPanel';
 import CampusMap from '../components/CampusMap';
 import { api } from '../lib/api';
 
@@ -36,8 +35,6 @@ export default function CampusPage() {
     return buildings.filter((b) => !q || b.name.toLowerCase().includes(q) || b.number === q);
   }, [buildings, query]);
 
-  const selected = buildings.find((b) => b.id === selectedId) ?? null;
-
   return (
     <div className="campus-page">
       <aside className="building-list">
@@ -62,7 +59,6 @@ export default function CampusPage() {
       </aside>
       <section className="map-area">
         <CampusMap buildings={buildings} selectedId={selectedId} onSelect={setSelectedId} />
-        {selected && <BuildingPanel building={selected} onClose={() => setSelectedId(null)} />}
       </section>
     </div>
   );

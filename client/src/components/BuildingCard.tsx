@@ -5,12 +5,10 @@ const FEATURE_LABELS: Record<string, string> = {
   'graphing-calculator': '📈 Graphing calculator',
 };
 
-export default function BuildingPanel({ building, onClose }: { building: BuildingSummary; onClose: () => void }) {
+/** Building info shown in the map popup (or floating panel): number, name, who's here, Join button. */
+export default function BuildingCard({ building }: { building: BuildingSummary }) {
   return (
-    <aside className="building-panel" aria-label={`${building.name} details`}>
-      <button className="close" onClick={onClose} aria-label="Close">
-        ×
-      </button>
+    <div className="building-card">
       <p className="building-number">{building.id === 'campus' ? 'Campus-wide' : `Building ${building.number}`}</p>
       <h2>{building.name}</h2>
       <ul className="stats">
@@ -27,6 +25,6 @@ export default function BuildingPanel({ building, onClose }: { building: Buildin
       <Link className="button primary" to={`/room/${building.id}`}>
         Join chatroom
       </Link>
-    </aside>
+    </div>
   );
 }
