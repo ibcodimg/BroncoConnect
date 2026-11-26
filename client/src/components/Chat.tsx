@@ -9,9 +9,14 @@ interface Props {
 
 export default function Chat({ messages, myId, onSend }: Props) {
   const [text, setText] = useState('');
-  const bottom = useRef<HTMLLIElement>(null);
+  const list = useRef<HTMLOListElement>(null);
 
-  useEffect(() => bottom.current?.scrollIntoView({ block: 'end' }), [messages.length]);
+  // Keep the newest message in view. (Block body on purpose: an effect must not return a value —
+  // newer browsers make scroll methods return a Promise, which React would treat as a cleanup and crash.)
+  useEffect(() => {
+    const el = list.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages.length]);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -23,7 +28,7 @@ export default function Chat({ messages, myId, onSend }: Props) {
 
   return (
     <section className="chat">
-      <ol className="messages" aria-live="polite">
+      <ol ref={list} className="messages" aria-live="polite">
         {messages.length === 0 && <li className="empty">No messages yet — say hi 👋</li>}
         {messages.map((m) => (
           <li key={m.id} className={m.author.publicId === myId ? 'mine' : ''}>
@@ -34,7 +39,6 @@ export default function Chat({ messages, myId, onSend }: Props) {
             <p>{m.text}</p>
           </li>
         ))}
-        <li ref={bottom} className="anchor" aria-hidden />
       </ol>
       <form onSubmit={submit}>
         <input

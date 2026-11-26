@@ -82,7 +82,9 @@ export default function Whiteboard({ title, strokes, myId, onAdd, onUndo, onClea
     if (draft.current) drawStroke(ctx, draft.current);
   };
 
-  useEffect(redraw, [visible]);
+  useEffect(() => {
+    redraw();
+  }, [visible]);
 
   const toBoard = (e: PointerEvent<HTMLCanvasElement>): Point => {
     const rect = e.currentTarget.getBoundingClientRect();
