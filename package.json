@@ -1,0 +1,23 @@
+{
+  "name": "broncoconnect",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Find Cal Poly Pomona students who are in the same building, on the same day, at the same time as you.",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,client -c green,yellow \"npm run dev -w server\" \"npm run dev -w client\"",
+    "build": "npm run build -w client",
+    "start": "npm run start -w server",
+    "typecheck": "npm run typecheck -w server && npm run typecheck -w client",
+    "fetch:buildings": "node scripts/fetch-campus-buildings.mjs"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
