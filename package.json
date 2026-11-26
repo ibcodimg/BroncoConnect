@@ -11,11 +11,13 @@
     "dev": "concurrently -n server,client -c green,yellow \"npm run dev -w server\" \"npm run dev -w client\"",
     "build": "npm run build -w client",
     "start": "npm run start -w server",
+    "test": "tsx --test shared/*.test.ts",
     "typecheck": "npm run typecheck -w server && npm run typecheck -w client",
     "fetch:buildings": "node scripts/fetch-campus-buildings.mjs"
   },
   "devDependencies": {
-    "concurrently": "^9.1.0"
+    "concurrently": "^9.1.0",
+    "tsx": "^4.19.2"
   },
   "engines": {
     "node": ">=20"

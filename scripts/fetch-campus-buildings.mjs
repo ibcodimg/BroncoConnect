@@ -8,7 +8,7 @@
 // Check the output on the map; fix any missing/wrong refs by editing the GeoJSON
 // (or better: improve OpenStreetMap itself). Map data © OpenStreetMap contributors, ODbL.
 
-import { mkdir, writeFile } from 'node:fs/promises';
+import { access, mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -27,14 +27,27 @@ out geom tags;
 const here = path.dirname(fileURLToPath(import.meta.url));
 const outFile = path.resolve(here, '../client/public/buildings.geojson');
 
+// --if-missing: keep an existing (e.g. committed, hand-fixed) file instead of downloading again.
+if (process.argv.includes('--if-missing')) {
+  const exists = await access(outFile).then(() => true, () => false);
+  if (exists) {
+    console.log('buildings.geojson already exists, skipping download');
+    process.exit(0);
+  }
+}
+
 const res = await fetch('https://overpass-api.de/api/interpreter', {
   method: 'POST',
   headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'BroncoConnect student project' },
   body: new URLSearchParams({ data: query }),
+}).catch((err) => {
+  console.error(`Could not reach OpenStreetMap: ${err.message}`);
+  process.exit(process.argv.includes('--if-missing') ? 0 : 1);
 });
 if (!res.ok) {
-  console.error(`Overpass error ${res.status}: ${await res.text()}`);
-  process.exit(1);
+  // Don't fail a deploy over map outlines — the building list still works without them.
+  console.error(`Overpass error ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  process.exit(process.argv.includes('--if-missing') ? 0 : 1);
 }
 const { elements } = await res.json();
 

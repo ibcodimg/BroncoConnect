@@ -1,0 +1,18 @@
+# Render Blueprint: one web service that serves the API, the websockets and the built React app.
+# On render.com: New → Blueprint → pick this repo, then paste MONGODB_URI when asked.
+services:
+  - type: web
+    name: broncoconnect
+    runtime: node
+    plan: free
+    buildCommand: npm install --include=dev && npm run fetch:buildings -- --if-missing && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB
+        value: broncoconnect

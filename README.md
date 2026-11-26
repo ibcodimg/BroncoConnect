@@ -82,6 +82,21 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the data model, API, and 
 
 BroncoConnect is not meant to identify anyone. Every profile field is optional. Users get a private random id, kept in their browser, and a separate public id that others see. The private id is never sent to other users, so no one can edit someone else's profile. Personal whiteboards never leave the browser.
 
+## Deployment (Render)
+
+The app runs as **one web service**: Express serves the API, the Socket.IO websockets, and the built React app from one URL. Vercel won't work here because it can't keep the long-lived websocket connections that chat and the shared whiteboard need.
+
+1. On [render.com](https://render.com), sign in with GitHub, then choose **New → Blueprint** and pick this repo. Render reads [`render.yaml`](render.yaml).
+2. When it asks, paste your Atlas connection string as `MONGODB_URI`.
+3. In MongoDB Atlas, open **Network Access** and add `0.0.0.0/0` (allow from anywhere), because Render's servers don't have a fixed IP.
+4. Every push to `main` redeploys automatically.
+
+The free plan sleeps after about 15 minutes with no visitors, so the first visit after that takes about 30 seconds to wake it up.
+
+## Continuous integration
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push and pull request. It installs dependencies, runs the unit tests (`shared/*.test.ts`), type-checks the server and client, and builds the client. Results are in the repo's **Actions** tab.
+
 ## Scripts
 
 | Command | What it does |
@@ -89,6 +104,7 @@ BroncoConnect is not meant to identify anyone. Every profile field is optional. 
 | `npm run dev` | Runs the server (port 4000) and client (port 5173) with reload |
 | `npm run build` | Builds the client into `client/dist` |
 | `npm start` | Runs the server, which also serves `client/dist` |
+| `npm test` | Runs the unit tests (schedule matching) |
 | `npm run typecheck` | Type-checks the server and client |
 | `npm run fetch:buildings` | Downloads campus building outlines from OpenStreetMap |
 
