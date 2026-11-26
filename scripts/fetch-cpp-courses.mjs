@@ -4,6 +4,7 @@
 //
 //   npm run fetch:courses
 //   npm run fetch:courses -- --url "https://catalog.cpp.edu/content.php?catoid=XX&navoid=YYYY"
+//   node scripts/fetch-cpp-courses.mjs --debug     (saves the first page to scripts/catalog-debug.html)
 //
 // The catalog is an Acalog site: its "Course Descriptions" page lists courses 100 per page as links
 // like "CS 3310 - Design and Analysis of Algorithms". Commit the JSON afterwards so deploys have it.
@@ -36,10 +37,31 @@ const decode = (s) =>
     .replace(/\s+/g, ' ')
     .trim();
 
+const DEBUG = process.argv.includes('--debug');
+
 async function get(url) {
-  const res = await fetch(url, { headers: { 'User-Agent': 'BroncoConnect student project (course list)' }, signal: AbortSignal.timeout(60_000) });
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': 'BroncoConnect student project (course list)',
+      Accept: 'text/html,application/xhtml+xml',
+      'Accept-Language': 'en-US,en;q=0.9',
+    },
+    signal: AbortSignal.timeout(60_000),
+  });
   if (!res.ok) throw new Error(`${res.status} for ${url}`);
   return res.text();
+}
+
+/** --debug: save what the catalog actually sent and summarize its links, so the parser can be fixed. */
+async function debugPage(html, url) {
+  const file = path.resolve(here, 'catalog-debug.html');
+  await writeFile(file, html);
+  const title = /<title>([\s\S]*?)<\/title>/i.exec(html)?.[1]?.trim();
+  console.log(`\n--- DEBUG ---\nURL: ${url}\nBytes: ${html.length}\nTitle: ${title}`);
+  console.log(`"coid=" appears ${(html.match(/coid=/g) ?? []).length} times; "preview_course" ${(html.match(/preview_course/g) ?? []).length} times; <a> tags: ${(html.match(/<a\s/gi) ?? []).length}`);
+  const samples = [...html.matchAll(/<a\b[^>]*>[\s\S]{0,120}?<\/a>/gi)].map((m) => m[0].replace(/\s+/g, ' ')).filter((a) => /coid|course/i.test(a)).slice(0, 5);
+  console.log('Sample course-looking links:\n' + (samples.join('\n') || '(none)'));
+  console.log(`Full page saved to ${path.relative(process.cwd(), file)}\n-------------`);
 }
 
 /** Find the current catalog's course listing link on the catalog home page. */
@@ -67,6 +89,7 @@ async function main() {
   for (let page = 1; page <= 200; page++) {
     const url = `${listing}&filter%5Bitem_type%5D=3&filter%5Bonly_active%5D=1&filter%5B3%5D=1&filter%5Bcpage%5D=${page}`;
     const html = await get(url);
+    if (DEBUG && page === 1) await debugPage(html, url);
     const before = courses.size;
     for (const m of html.matchAll(/<a[^>]+href="[^"]*preview_course[^"]*coid=\d+[^"]*"[^>]*>([\s\S]*?)<\/a>/gi)) {
       const text = decode(m[1]);
