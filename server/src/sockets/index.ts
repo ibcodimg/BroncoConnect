@@ -8,15 +8,22 @@ import {
   type ServerToClientEvents,
   type Stroke,
 } from '../../../shared/types';
+import { ANON_ID, ipFrom, loadUser } from '../lib/auth';
+import { banNotice } from '../lib/bans';
 import { presence } from '../lib/presence';
+import { emitToUser, markOffline, markOnline } from '../lib/realtime';
+import { DirectMessage } from '../models/DirectMessage';
 import { Message } from '../models/Message';
 import { StrokeModel } from '../models/Stroke';
-import { displayNameOf, getOrCreateUser } from '../models/User';
+import { User, displayNameOf } from '../models/User';
+import { toDM } from '../routes/dms';
 
 export interface SocketData {
-  me?: { publicId: string; displayName: string };
+  me?: { publicId: string; displayName: string; isAdmin: boolean };
+  ip: string;
   rooms: Set<string>;
   lastChatAt: number;
+  lastDmAt: number;
   strokeTimes: number[];
 }
 
@@ -25,7 +32,7 @@ type S = Socket<ClientToServerEvents, ServerToClientEvents, Record<string, never
 
 const CHAT_HISTORY = 50;
 const BOARD_HISTORY = 2000;
-const TOOLS = new Set(['pen', 'line', 'rect', 'ellipse', 'eraser']);
+const TOOLS = new Set(['pen', 'line', 'rect', 'ellipse']);
 
 function toChat(doc: { _id: unknown; roomId: string; authorId: string; authorName: string; text: string; createdAt?: Date }): ChatMessage {
   return {
@@ -61,8 +68,10 @@ export function registerSockets(io: IO) {
   const broadcastPresence = (roomId: string) => io.to(roomId).emit('room:presence', presence.snapshot(roomId));
 
   io.on('connection', (socket: S) => {
+    socket.data.ip = ipFrom(socket.handshake.headers['x-forwarded-for'], socket.handshake.address);
     socket.data.rooms = new Set();
     socket.data.lastChatAt = 0;
+    socket.data.lastDmAt = 0;
     socket.data.strokeTimes = [];
 
     const requireMe = () => {
@@ -73,9 +82,16 @@ export function registerSockets(io: IO) {
 
     socket.on('session:hello', async ({ anonId }, ack) => {
       try {
-        if (typeof anonId !== 'string' || !/^[A-Za-z0-9-]{16,64}$/.test(anonId)) return;
-        const user = await getOrCreateUser(anonId);
-        socket.data.me = { publicId: user.publicId, displayName: displayNameOf(user) };
+        if (typeof anonId !== 'string' || !ANON_ID.test(anonId)) return;
+        const { user, ban } = await loadUser(anonId, socket.data.ip);
+        if (ban) {
+          socket.emit('banned', banNotice(ban));
+          socket.disconnect(true);
+          return;
+        }
+        if (socket.data.me) markOffline(socket.data.me.publicId, socket.id);
+        socket.data.me = { publicId: user.publicId, displayName: displayNameOf(user), isAdmin: !!user.isAdmin };
+        markOnline(user.publicId, socket.id);
         ack?.({
           publicId: user.publicId,
           displayName: displayNameOf(user),
@@ -83,6 +99,7 @@ export function registerSockets(io: IO) {
           status: (user.status as 'commuter' | 'resident' | undefined) ?? undefined,
           lookingFor: user.lookingFor as never,
           hasDisplayName: !!user.displayName?.trim(),
+          isAdmin: !!user.isAdmin,
         });
       } catch (err) {
         console.error('session:hello', err);
@@ -100,7 +117,7 @@ export function registerSockets(io: IO) {
       try {
         const [messages, strokes] = await Promise.all([
           Message.find({ roomId }).sort({ createdAt: -1 }).limit(CHAT_HISTORY).lean(),
-          StrokeModel.find({ roomId }).sort({ createdAt: -1 }).limit(BOARD_HISTORY).lean(),
+          StrokeModel.find({ roomId, tool: { $ne: 'eraser' } }).sort({ createdAt: -1 }).limit(BOARD_HISTORY).lean(),
         ]);
         socket.emit('chat:history', { roomId, messages: messages.reverse().map(toChat) });
         socket.emit('board:history', {
@@ -113,6 +130,7 @@ export function registerSockets(io: IO) {
             color: s.color,
             width: s.width,
             points: s.points.map((p) => ({ x: p.x ?? 0, y: p.y ?? 0 })),
+            ...(s.locked ? { locked: true } : {}),
           })),
         });
       } catch (err) {
@@ -148,14 +166,23 @@ export function registerSockets(io: IO) {
     socket.on('board:stroke', async ({ roomId, stroke }) => {
       const me = requireMe();
       if (!me || !inRoom(roomId) || !validStroke(stroke)) return;
-      // At most 30 strokes per 5 seconds per connection.
+      // At most 60 strokes per 5 seconds per connection (pasting sends several at once).
       const now = Date.now();
       socket.data.strokeTimes = socket.data.strokeTimes.filter((t) => now - t < 5000);
-      if (socket.data.strokeTimes.length >= 30) return;
+      if (socket.data.strokeTimes.length >= 60) return;
       socket.data.strokeTimes.push(now);
 
       // The server decides who the author is — clients can't draw "as" someone else.
-      const saved: Stroke = { ...stroke, authorId: me.publicId, authorName: me.displayName };
+      const saved: Stroke = {
+        id: stroke.id,
+        authorId: me.publicId,
+        authorName: me.displayName,
+        tool: stroke.tool,
+        color: stroke.color,
+        width: stroke.width,
+        points: stroke.points.map(({ x, y }) => ({ x, y })),
+        ...(stroke.locked === true ? { locked: true } : {}),
+      };
       socket.to(roomId).emit('board:stroke', { roomId, stroke: saved });
       try {
         await StrokeModel.create({
@@ -166,11 +193,29 @@ export function registerSockets(io: IO) {
           tool: saved.tool,
           color: saved.color,
           width: saved.width,
-          points: saved.points.map(({ x, y }) => ({ x, y })),
+          points: saved.points,
+          locked: !!saved.locked,
         });
       } catch (err) {
         console.error('board:stroke', err);
       }
+    });
+
+    /** Erase strokes: yours, anyone's unlocked ink, or (admins) anything. Locked ink of others is refused. */
+    socket.on('board:erase', async ({ roomId, strokeIds }) => {
+      const me = requireMe();
+      if (!me || !inRoom(roomId) || !Array.isArray(strokeIds)) return;
+      const ids = strokeIds.filter((id) => typeof id === 'string').slice(0, 500);
+      if (ids.length === 0) return;
+      const filter = me.isAdmin
+        ? { roomId, strokeId: { $in: ids } }
+        : { roomId, strokeId: { $in: ids }, $or: [{ authorId: me.publicId }, { locked: { $ne: true } }] };
+      const allowed = await StrokeModel.find(filter, { strokeId: 1 }).lean();
+      if (allowed.length === 0) return;
+      const allowedIds = allowed.map((s) => s.strokeId);
+      await StrokeModel.deleteMany({ roomId, strokeId: { $in: allowedIds } });
+      io.to(roomId).emit('board:removed', { roomId, strokeIds: allowedIds });
+      if (allowedIds.length < ids.length) socket.emit('error:message', "Some ink is unerasable — only its author can erase it.");
     });
 
     socket.on('board:undo', async ({ roomId }) => {
@@ -189,7 +234,34 @@ export function registerSockets(io: IO) {
       io.to(roomId).emit('board:removed', { roomId, strokeIds: mine.map((s) => s.strokeId) });
     });
 
+    socket.on('dm:send', async ({ to, text }, ack) => {
+      const me = requireMe();
+      const reply = typeof ack === 'function' ? ack : () => {};
+      if (!me) return reply({ error: 'Not connected' });
+      if (typeof to !== 'string' || to === me.publicId || typeof text !== 'string') return reply({ error: 'Bad message' });
+      const clean = text.trim().slice(0, 1000);
+      if (!clean) return reply({ error: 'Empty message' });
+      const now = Date.now();
+      if (now - socket.data.lastDmAt < 400) return reply({ error: 'Slow down a little.' });
+      socket.data.lastDmAt = now;
+      try {
+        if (!(await User.exists({ publicId: to }))) return reply({ error: 'User not found' });
+        const dm = toDM(await DirectMessage.create({ from: me.publicId, to, text: clean }));
+        emitToUser(to, 'dm:message', dm);
+        // Your other tabs see it too.
+        for (const id of io.sockets.sockets.keys()) {
+          const other = io.sockets.sockets.get(id);
+          if (other && other.id !== socket.id && other.data.me?.publicId === me.publicId) other.emit('dm:message', dm);
+        }
+        reply(dm);
+      } catch (err) {
+        console.error('dm:send', err);
+        reply({ error: 'Could not send' });
+      }
+    });
+
     socket.on('disconnect', () => {
+      if (socket.data.me) markOffline(socket.data.me.publicId, socket.id);
       for (const roomId of socket.data.rooms) {
         presence.leave(roomId, socket.id);
         broadcastPresence(roomId);

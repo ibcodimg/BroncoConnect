@@ -2,7 +2,9 @@ import { Router } from 'express';
 import { findRoom } from '../../../shared/buildings';
 import { isValidBlock, scheduleOverlaps } from '../../../shared/schedule';
 import { LOOKING_FOR, type Match, type ScheduleBlock, type UserProfile } from '../../../shared/types';
-import { User, displayNameOf, getOrCreateUser } from '../models/User';
+import { loadUser, requestIp } from '../lib/auth';
+import { banNotice } from '../lib/bans';
+import { User, displayNameOf } from '../models/User';
 
 export const usersRouter = Router();
 
@@ -58,14 +60,21 @@ function sanitize(body: Record<string, unknown>): UserProfile {
   };
 }
 
-usersRouter.param('anonId', (req, res, next, anonId: string) => {
+usersRouter.param('anonId', async (req, res, next, anonId: string) => {
   if (!ANON_ID.test(anonId)) return res.status(400).json({ error: 'Bad id' });
-  next();
+  try {
+    const { ban } = await loadUser(anonId, requestIp(req));
+    if (ban) return res.status(403).json({ error: 'banned', ban: banNotice(ban) });
+    next();
+  } catch (err) {
+    next(err);
+  }
 });
 
 usersRouter.get('/:anonId', async (req, res, next) => {
   try {
-    const user = await getOrCreateUser(req.params.anonId);
+    const user = await User.findOne({ anonId: req.params.anonId });
+    if (!user) return res.status(404).json({ error: 'Not found' });
     res.json({ ...toProfile(user), publicId: user.publicId });
   } catch (err) {
     next(err);

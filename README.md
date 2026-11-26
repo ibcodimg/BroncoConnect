@@ -12,7 +12,11 @@ CS 4800 project by Bill Ma. The original pitch is in [`docs/CS4800_Project_Idea_
 | --- | --- |
 | ✅ scaffolded | **Campus map**: an interactive CPP map. Click a building to see its number and name, how many people are in its chatroom, and how many are there right now according to their schedules. |
 | ✅ scaffolded | **Building chatrooms**: real-time chat for every building, plus one for the whole campus. |
-| ✅ scaffolded | **Whiteboards**: a personal board (stays in your browser) and a collaborative board per room. Pen, line, rectangle, ellipse, eraser, color, and thickness. You can copy and paste between boards, undo, clear your own strokes, and mute other people's drawings. |
+| ✅ | **Whiteboards**: a personal board (stays in your browser) and a collaborative board per room. Pen, line, rectangle, ellipse, color, thickness, and a stroke eraser. The **Select** tool works by click or by dragging a box; **Ctrl+C / Ctrl+V** copy and paste between boards at your cursor; Delete, Ctrl+A, Ctrl+Z, and Esc also work. |
+| ✅ | **Unerasable ink** on collaborative boards: only the author (or an admin) can erase it. Everyone else can only hide it by muting the author. |
+| ✅ | **People**: click any username for a card with Add friend, Message, Report, and four mute options (drawings or messages, in this building or everywhere). Search people by username. |
+| ✅ | **Direct messages** with live delivery and unread counts. |
+| ✅ | **Admin**: review reports with the reported person's recent messages, look up users, and ban by user or IP for 1 hour to 30 days or permanently. |
 | ✅ scaffolded | **Building-specific tools**: a graphing calculator in Building 8 (College of Science, home of Math & Stats). |
 | ✅ scaffolded | **Anonymous, optional profile**: display name, major, commuter or resident, what you're looking for, and your weekly schedule. No account; the site remembers you through a random id in your browser. |
 | ✅ scaffolded | **Find people**: matches by same building, same day, and overlapping time. |
@@ -77,6 +81,14 @@ broncoconnect/
 ```
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the data model, API, and socket events.
+
+## Admin
+
+1. Set `ADMIN_TOKEN` to a long random string in `server/.env`, and in Render's environment settings for production.
+2. Open `/admin` in your browser and enter the token once. That browser's identity becomes an admin from then on.
+3. An **Admin** tab appears. From it you can review reports, ban people (user or IP, timed or permanent), and lift bans. Admins can also erase anyone's ink, including unerasable ink.
+
+User bans follow the browser identity, so clearing site data gets around them. IP bans are stronger, but they block everyone on that network, and campus Wi-Fi can put many students behind one IP. Admins and IPs that admins use can't be banned, so you can't lock yourself out.
 
 ## Privacy
 

@@ -44,6 +44,82 @@ export interface PublicUser {
 export interface Me extends PublicUser {
   /** False until you've picked a username (displayName falls back to "Bronco #abcd"). */
   hasDisplayName: boolean;
+  isAdmin: boolean;
+}
+
+/** What you see when you click someone's name. */
+export interface PublicProfile extends PublicUser {
+  online: boolean;
+  strongSubjects: string[];
+  needHelpSubjects: string[];
+  /** Your relationship to them. */
+  friendStatus: FriendStatus;
+  isMe: boolean;
+}
+
+export type FriendStatus = 'none' | 'friends' | 'outgoing' | 'incoming';
+
+export interface FriendsList {
+  friends: (PublicUser & { online: boolean })[];
+  incoming: PublicUser[];
+  outgoing: PublicUser[];
+}
+
+export interface DirectMessage {
+  id: string;
+  from: string; // publicId
+  to: string; // publicId
+  text: string;
+  createdAt: string;
+  read: boolean;
+}
+
+export interface Conversation {
+  other: PublicUser & { online: boolean };
+  last: DirectMessage;
+  unread: number;
+}
+
+export const REPORT_REASONS = ['harassment', 'spam', 'inappropriate-drawing', 'inappropriate-message', 'other'] as const;
+export type ReportReason = (typeof REPORT_REASONS)[number];
+
+export interface ReportView {
+  id: string;
+  reason: ReportReason;
+  details?: string;
+  roomId?: string;
+  status: 'open' | 'resolved';
+  createdAt: string;
+  reporter: PublicUser;
+  target: PublicUser & { lastIp?: string; banned: boolean };
+  /** Target's recent messages in that room when the report was made. */
+  context: { text: string; createdAt: string }[];
+}
+
+export interface BanView {
+  id: string;
+  kind: 'user' | 'ip';
+  /** publicId for user bans, IP for IP bans */
+  value: string;
+  displayName?: string;
+  reason?: string;
+  /** null = permanent */
+  until: string | null;
+  createdAt: string;
+}
+
+export interface BanNotice {
+  reason?: string;
+  until: string | null;
+}
+
+/** Client-side mute: hide someone's drawings or messages in one building or everywhere. */
+export interface MuteRule {
+  publicId: string;
+  displayName: string;
+  kind: 'draw' | 'text';
+  /** roomId, or 'all' for every building */
+  scope: string;
 }
 
 export interface Match extends PublicUser {
@@ -81,7 +157,8 @@ export interface Point {
   y: number;
 }
 
-export type Tool = 'pen' | 'line' | 'rect' | 'ellipse' | 'eraser';
+/** Tools that create strokes. (Select and eraser are board modes, not stroke types.) */
+export type Tool = 'pen' | 'line' | 'rect' | 'ellipse';
 
 export interface Stroke {
   id: string;
@@ -92,6 +169,8 @@ export interface Stroke {
   width: number;
   /** Pen: every point. Shapes: [start, end]. Logical board coords (BOARD_WIDTH × BOARD_HEIGHT). */
   points: Point[];
+  /** "Unerasable" ink on the collaborative board: only the author (or an admin) can erase it. */
+  locked?: boolean;
 }
 
 export const BOARD_WIDTH = 1600;
@@ -113,6 +192,9 @@ export interface ClientToServerEvents {
   'board:stroke': (payload: { roomId: string; stroke: Stroke }) => void;
   'board:undo': (payload: { roomId: string }) => void;
   'board:clear-mine': (payload: { roomId: string }) => void;
+  /** Erase or delete strokes. Server only removes ones you're allowed to (yours, unlocked, or any if admin). */
+  'board:erase': (payload: { roomId: string; strokeIds: string[] }) => void;
+  'dm:send': (payload: { to: string; text: string }, ack: (msg: DirectMessage | { error: string }) => void) => void;
 }
 
 export interface ServerToClientEvents {
@@ -123,4 +205,7 @@ export interface ServerToClientEvents {
   'board:stroke': (payload: { roomId: string; stroke: Stroke }) => void;
   'board:removed': (payload: { roomId: string; strokeIds: string[] }) => void;
   'error:message': (message: string) => void;
+  'dm:message': (message: DirectMessage) => void;
+  'friend:update': () => void;
+  banned: (notice: BanNotice) => void;
 }

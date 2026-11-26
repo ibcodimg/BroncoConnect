@@ -107,10 +107,10 @@ export default function CampusMap({ buildings, selectedId, onSelect }: Props) {
         className="campus-map"
       >
         <TileLayer
-          // Clean, low-detail basemap so campus buildings stand out. Tiles exist to z19; z20 is upscaled instead of going gray.
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-          subdomains="abcd"
+          // Standard OpenStreetMap tiles (no API key). Washed out with CSS (.campus-map .leaflet-tile-pane) so
+          // buildings stand out. Tiles exist to z19; z20 is upscaled instead of going gray.
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
           maxNativeZoom={19}
           maxZoom={20}
         />

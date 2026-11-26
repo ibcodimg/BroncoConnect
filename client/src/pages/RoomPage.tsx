@@ -1,10 +1,12 @@
 import { findRoom } from '@shared/buildings';
 import type { ChatMessage, RoomPresence, Stroke } from '@shared/types';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import Chat from '../components/Chat';
+import { useOpenUser, UserName } from '../components/UserCard';
 import Whiteboard from '../components/Whiteboard';
 import { FEATURE_COMPONENTS } from '../features';
+import { useMutes } from '../lib/mutes';
 import { useSession } from '../lib/session';
 import { socket } from '../lib/socket';
 
@@ -45,7 +47,11 @@ function Room({ roomId }: { roomId: string }) {
   const [view, setView] = useState<BoardView>('both');
   const [personal, setPersonal] = usePersonalBoard(roomId);
   const [notice, setNotice] = useState<string | null>(null);
+  const [showPeople, setShowPeople] = useState(false);
   const myPublicId = me?.publicId;
+  const mutes = useMutes();
+  const openUser = useOpenUser();
+  const isDrawHidden = useCallback((s: Stroke) => mutes.isMuted(s.authorId, 'draw', roomId), [mutes, roomId]);
 
   useEffect(() => {
     if (!room || !myPublicId || !connected) return;
@@ -102,6 +108,8 @@ function Room({ roomId }: { roomId: string }) {
   };
 
   const undoPersonal = () => setPersonal((prev) => prev.slice(0, -1));
+  const erasePersonal = (ids: string[]) => setPersonal((prev) => prev.filter((s) => !ids.includes(s.id)));
+  const eraseShared = (ids: string[]) => socket.emit('board:erase', { roomId, strokeIds: ids });
 
   return (
     <div className="room-page">
@@ -110,9 +118,20 @@ function Room({ roomId }: { roomId: string }) {
           <p className="building-number">{room.id === 'campus' ? 'Campus-wide' : `Building ${room.number}`}</p>
           <h1>{room.name}</h1>
         </div>
-        <p className="presence" title={presence?.users.map((u) => u.displayName).join(', ')}>
-          🟢 {presence?.count ?? 1} here
-        </p>
+        <div className="presence">
+          <button className="link" onClick={() => setShowPeople((v) => !v)} aria-expanded={showPeople}>
+            🟢 {presence?.count ?? 1} here
+          </button>
+          {showPeople && (
+            <ul className="presence-list">
+              {(presence?.users ?? []).map((u) => (
+                <li key={u.publicId}>
+                  <UserName publicId={u.publicId} name={u.publicId === myId ? `${u.displayName} (you)` : u.displayName} roomId={roomId} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </header>
       {notice && (
         <p className="notice" onClick={() => setNotice(null)}>
@@ -121,7 +140,7 @@ function Room({ roomId }: { roomId: string }) {
       )}
 
       <div className="room-layout">
-        <Chat messages={messages} myId={myId} onSend={(text) => socket.emit('chat:send', { roomId, text })} />
+        <Chat roomId={roomId} messages={messages} myId={myId} onSend={(text) => socket.emit('chat:send', { roomId, text })} />
 
         <div className="boards">
           <div className="segmented" role="tablist">
@@ -137,6 +156,7 @@ function Room({ roomId }: { roomId: string }) {
               strokes={personal}
               myId={myId}
               onAdd={(s) => setPersonal((prev) => [...prev, ...s])}
+              onErase={erasePersonal}
               onUndo={undoPersonal}
               onClearMine={() => setPersonal([])}
             />
@@ -147,9 +167,14 @@ function Room({ roomId }: { roomId: string }) {
               strokes={shared}
               myId={myId}
               onAdd={addShared}
+              onErase={eraseShared}
               onUndo={() => socket.emit('board:undo', { roomId })}
               onClearMine={() => socket.emit('board:clear-mine', { roomId })}
-              allowMute
+              collaborative
+              isAdmin={me.isAdmin}
+              isHidden={isDrawHidden}
+              onAuthorClick={(publicId) => openUser({ publicId, roomId })}
+              onToggleHideAuthor={(publicId, displayName) => mutes.toggle({ publicId, displayName, kind: 'draw', scope: roomId })}
             />
           )}
           {room.features?.map((f) => {

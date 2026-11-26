@@ -1,22 +1,29 @@
 import type { ChatMessage } from '@shared/types';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useMutes } from '../lib/mutes';
+import { UserName } from './UserCard';
 
 interface Props {
+  roomId: string;
   messages: ChatMessage[];
   myId: string;
   onSend: (text: string) => void;
 }
 
-export default function Chat({ messages, myId, onSend }: Props) {
+export default function Chat({ roomId, messages, myId, onSend }: Props) {
   const [text, setText] = useState('');
   const list = useRef<HTMLOListElement>(null);
+  const { isMuted } = useMutes();
+
+  const shown = messages.filter((m) => !isMuted(m.author.publicId, 'text', roomId));
+  const hiddenCount = messages.length - shown.length;
 
   // Keep the newest message in view. (Block body on purpose: an effect must not return a value —
   // newer browsers make scroll methods return a Promise, which React would treat as a cleanup and crash.)
   useEffect(() => {
     const el = list.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [messages.length]);
+  }, [shown.length]);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -29,10 +36,10 @@ export default function Chat({ messages, myId, onSend }: Props) {
   return (
     <section className="chat">
       <ol ref={list} className="messages" aria-live="polite">
-        {messages.length === 0 && <li className="empty">No messages yet — say hi 👋</li>}
-        {messages.map((m) => (
+        {shown.length === 0 && <li className="empty">No messages yet. Say hi 👋</li>}
+        {shown.map((m) => (
           <li key={m.id} className={m.author.publicId === myId ? 'mine' : ''}>
-            <span className="author">{m.author.displayName}</span>
+            <UserName className="author" publicId={m.author.publicId} name={m.author.displayName} roomId={roomId} />
             <time dateTime={m.createdAt}>
               {new Date(m.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
             </time>
@@ -40,6 +47,7 @@ export default function Chat({ messages, myId, onSend }: Props) {
           </li>
         ))}
       </ol>
+      {hiddenCount > 0 && <p className="hidden-note">{hiddenCount} message{hiddenCount === 1 ? '' : 's'} from muted people hidden</p>}
       <form onSubmit={submit}>
         <input
           value={text}

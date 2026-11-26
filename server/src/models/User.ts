@@ -30,11 +30,15 @@ const userSchema = new Schema(
     strongSubjects: { type: [{ type: String, maxlength: 40 }], default: [] },
     needHelpSubjects: { type: [{ type: String, maxlength: 40 }], default: [] },
     lastSeenAt: { type: Date, default: () => new Date() },
+    /** Most recent IP this user connected from (for IP bans). Never shown to other users. */
+    lastIp: { type: String },
+    isAdmin: { type: Boolean, default: false },
   },
   { timestamps: true },
 );
 
 userSchema.index({ 'schedule.day': 1, 'schedule.buildingId': 1 });
+userSchema.index({ displayName: 1 });
 
 export type UserDoc = InferSchemaType<typeof userSchema>;
 export const User = model('User', userSchema);

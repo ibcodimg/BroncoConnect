@@ -4,7 +4,7 @@ import { useSession } from '../lib/session';
 
 const DISMISS_KEY = 'broncoconnect:nudge-dismissed';
 
-/** Top-right prompt pointing people without a username to "Find people". Comes back next visit if dismissed. */
+/** Top-right prompt pointing people without a username to "Create Profile". Comes back next visit if dismissed. */
 export default function ProfileNudge() {
   const { me } = useSession();
   const { pathname } = useLocation();
@@ -16,7 +16,7 @@ export default function ProfileNudge() {
     }
   });
 
-  if (!me || me.hasDisplayName || dismissed || pathname === '/matches' || pathname === '/profile') return null;
+  if (!me || me.hasDisplayName || dismissed || pathname === '/profile') return null;
 
   const dismiss = () => {
     setDismissed(true);
@@ -36,8 +36,8 @@ export default function ProfileNudge() {
         <strong>👋 Meet people on campus when you are.</strong>
       </p>
       <p>Pick a username to see who's in the same building at the same time as you.</p>
-      <Link className="button primary" to="/matches" onClick={dismiss}>
-        Find people →
+      <Link className="button primary" to="/profile" onClick={dismiss}>
+        Create Profile →
       </Link>
     </aside>
   );

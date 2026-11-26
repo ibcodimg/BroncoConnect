@@ -3,7 +3,14 @@ import { DAY_LABELS, isValidBlock } from '@shared/schedule';
 import { DAYS, LOOKING_FOR, type LookingFor, type ScheduleBlock, type UserProfile } from '@shared/types';
 import { useEffect, useState, type FormEvent } from 'react';
 import { api } from '../lib/api';
+import { useMutes } from '../lib/mutes';
 import { useSession } from '../lib/session';
+
+const SCOPE_LABEL = (scope: string) => {
+  if (scope === 'all') return 'everywhere';
+  const b = BUILDINGS.find((x) => x.id === scope);
+  return b ? `in Building ${b.number}` : scope === 'campus' ? 'in campus chat' : scope;
+};
 
 const EMPTY: UserProfile = { schedule: [], lookingFor: [], strongSubjects: [], needHelpSubjects: [] };
 
@@ -21,7 +28,8 @@ const splitList = (s: string) =>
     .filter(Boolean);
 
 export default function ProfilePage() {
-  const { refresh } = useSession();
+  const { refresh, me } = useSession();
+  const mutes = useMutes();
   const [profile, setProfile] = useState<UserProfile>(EMPTY);
   const [status, setStatus] = useState<'loading' | 'idle' | 'saving' | 'saved' | 'error'>('loading');
   const [strongText, setStrongText] = useState('');
@@ -78,7 +86,7 @@ export default function ProfilePage() {
 
   return (
     <form className="page profile" onSubmit={save}>
-      <h1>About you</h1>
+      <h1>{me?.hasDisplayName ? 'My profile' : 'Create your profile'}</h1>
       <p className="hint">
         Everything here is optional and you don’t need an account. It’s saved to this browser so the site remembers you
         next time. Don’t enter your real full name or Bronco ID.
@@ -86,7 +94,12 @@ export default function ProfilePage() {
 
       <label>
         Display name
-        <input value={profile.displayName ?? ''} maxLength={32} onChange={(e) => set('displayName', e.target.value)} />
+        <input
+          value={profile.displayName ?? ''}
+          maxLength={32}
+          placeholder="Pick a username so people can find you"
+          onChange={(e) => set('displayName', e.target.value)}
+        />
       </label>
       <label>
         Major
@@ -177,6 +190,21 @@ export default function ProfilePage() {
         {status === 'saved' && <span className="ok">Saved ✓</span>}
         {status === 'error' && <span className="error">Something went wrong. Is the server running?</span>}
       </div>
+
+      <fieldset>
+        <legend>People you've muted</legend>
+        {mutes.rules.length === 0 && <p className="hint">Nobody. Click someone's name to mute their drawings or messages.</p>}
+        {mutes.rules.map((r) => (
+          <div key={`${r.publicId}-${r.kind}-${r.scope}`} className="row">
+            <span>
+              {r.displayName}: {r.kind === 'draw' ? 'drawings' : 'messages'} hidden {SCOPE_LABEL(r.scope)}
+            </span>
+            <button type="button" onClick={() => mutes.remove(r)}>
+              Unmute
+            </button>
+          </div>
+        ))}
+      </fieldset>
     </form>
   );
 }

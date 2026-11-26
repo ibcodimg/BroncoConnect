@@ -65,6 +65,7 @@ input, select { font: inherit; padding: 0.35rem 0.5rem; border: 1px solid var(--
 .badge { background: var(--gold); color: var(--ink); border-radius: 999px; padding: 0 0.45rem; font-size: 0.8rem; }
 .map-area { position: relative; }
 .map-wrap, .campus-map { height: 100%; width: 100%; }
+.campus-map .leaflet-tile-pane { filter: grayscale(0.85) brightness(1.08) contrast(0.85); opacity: 0.75; }
 .map-note {
   position: absolute; bottom: 1rem; left: 1rem; z-index: 500; margin: 0;
   background: white; padding: 0.5rem 0.75rem; border-radius: var(--radius); box-shadow: 0 2px 8px #0002;
@@ -149,4 +150,76 @@ input, select { font: inherit; padding: 0.35rem 0.5rem; border: 1px solid var(--
   .chat { height: 50vh; position: static; }
   .building-panel { left: 1rem; width: auto; }
   .nudge { left: 16px; width: auto; }
+}
+
+/* ---- People, user card, messages, admin ---- */
+.danger { background: #b3261e; color: white; border-color: #b3261e; }
+.username { border: none; background: none; padding: 0; color: var(--green); font-weight: 600; cursor: pointer; }
+.username:hover { text-decoration: underline; }
+.messages .username.author { margin-right: 0.4rem; }
+.app-header .badge { margin-left: 0.3rem; }
+.online-dot { display: inline-block; width: 0.55rem; height: 0.55rem; border-radius: 50%; background: #2ecc71; margin: 0 0.3rem; vertical-align: middle; }
+.hidden-note { margin: 0; padding: 0.2rem 0.75rem; font-size: 0.8rem; color: var(--muted); }
+.tag { margin-left: 0.4rem; font-size: 0.75rem; background: #eee; border-radius: 6px; padding: 0 0.35rem; }
+.warning { background: #fff4d6; padding: 0.4rem 0.6rem; border-radius: 8px; }
+
+.modal-backdrop { position: fixed; inset: 0; background: #0006; z-index: 2000; display: grid; place-items: center; padding: 1rem; }
+.modal { position: relative; background: white; border-radius: var(--radius); padding: 1.2rem 1.4rem; width: min(440px, 100%); max-height: 90vh; overflow: auto; box-shadow: 0 10px 40px #0004; }
+.modal .close { position: absolute; top: 0.4rem; right: 0.5rem; border: none; background: none; font-size: 1.4rem; }
+.user-card .meta { color: var(--muted); margin: 0.2rem 0; }
+.user-card .actions { margin: 0.8rem 0; }
+.user-card .mutes { border: 1px solid var(--line); border-radius: var(--radius); margin: 0.6rem 0; }
+.mute-option { display: block; margin: 0.25rem 0; }
+.report-form textarea { width: 100%; font: inherit; margin: 0.5rem 0; padding: 0.4rem; border: 1px solid var(--line); border-radius: 8px; }
+
+.presence { position: relative; }
+.presence > .link { font-weight: 600; }
+.presence-list {
+  position: absolute; right: 0; top: 1.8rem; z-index: 50; list-style: none; margin: 0; padding: 0.5rem 0.8rem;
+  background: white; border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 4px 16px #0002; min-width: 180px;
+}
+.presence-list li { padding: 0.15rem 0; }
+
+.whiteboard.mode-select canvas { cursor: default; }
+.whiteboard.mode-eraser canvas { cursor: cell; }
+.lock-toggle { padding: 0.25rem 0.5rem; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.lock-toggle.on { background: #fff4d6; border-color: var(--gold); }
+.board-hint { margin: 0.3rem 0 0; min-height: 1.2em; color: var(--muted); font-size: 0.85rem; }
+.mute-list .row { margin: 0.2rem 0; }
+
+.people section { margin-bottom: 1.5rem; }
+.big-search { width: 100%; font-size: 1.05rem; padding: 0.6rem 0.8rem; }
+.people-list { list-style: none; padding: 0; margin: 0.5rem 0; }
+.people-list li { display: flex; gap: 0.6rem; align-items: center; padding: 0.4rem 0; border-bottom: 1px solid var(--line); }
+.people-list .meta { color: var(--muted); font-size: 0.9rem; }
+
+.messages-page { display: grid; grid-template-columns: 280px 1fr; height: 100%; }
+.conversations { border-right: 1px solid var(--line); background: white; overflow: auto; padding: 0.75rem; }
+.conversations ul { list-style: none; padding: 0; margin: 0; }
+.conversations li a { display: block; padding: 0.5rem; border-radius: 8px; text-decoration: none; color: var(--ink); }
+.conversations li.active a, .conversations li a:hover { background: #eef4ef; }
+.conversations .preview { display: block; color: var(--muted); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.thread { display: flex; flex-direction: column; height: 100%; }
+.thread header { padding: 0.75rem 1rem; border-bottom: 1px solid var(--line); background: white; }
+.thread .messages { flex: 1; }
+.thread .messages li { max-width: 70%; background: white; border: 1px solid var(--line); border-radius: 12px; padding: 0.4rem 0.7rem; }
+.thread .messages li.mine { margin-left: auto; background: #e8f3ec; }
+.thread form { display: flex; gap: 0.5rem; padding: 0.6rem; border-top: 1px solid var(--line); background: white; }
+.thread form input { flex: 1; }
+
+.admin .segmented { margin: 0.5rem 0 1rem; }
+.report-list { list-style: none; padding: 0; }
+.report-list > li { background: white; border: 1px solid var(--line); border-radius: var(--radius); padding: 0.75rem 1rem; margin-bottom: 0.75rem; }
+.report-list blockquote { margin: 0.4rem 0; padding: 0.3rem 0.7rem; border-left: 3px solid var(--line); color: #333; }
+.report-list .context { font-size: 0.9rem; }
+.report-list .context time { color: var(--muted); margin-right: 0.4rem; }
+.ban-form { margin-top: 0.6rem; padding: 0.6rem; background: #fdf1f0; border-radius: 8px; }
+.users-table { width: 100%; border-collapse: collapse; margin-top: 0.6rem; background: white; }
+.users-table th, .users-table td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+.banned-screen { max-width: 560px; margin: 15vh auto; text-align: center; padding: 2rem; background: white; border-radius: var(--radius); border-top: 6px solid #b3261e; }
+
+@media (max-width: 800px) {
+  .messages-page { grid-template-columns: 1fr; }
+  .app-header { flex-wrap: wrap; }
+  .app-header nav a { margin-left: 0.6rem; }
 }

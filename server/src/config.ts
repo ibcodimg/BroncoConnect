@@ -13,4 +13,6 @@ export const config = {
   mongoUri: required('MONGODB_URI'),
   mongoDb: process.env.MONGODB_DB ?? 'broncoconnect',
   clientOrigin: process.env.CLIENT_ORIGIN ?? 'http://localhost:5173',
+  /** Secret you type once on /admin to make your browser an admin. Leave unset to disable admin. */
+  adminToken: process.env.ADMIN_TOKEN ?? '',
 };
